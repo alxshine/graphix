@@ -67,80 +67,12 @@ float TranslateZ[16];
 float InitialTransform[16];
 
 
-//9 vertices per octagon times 4 octagons times 3 coordinates
-GLfloat vertex_buffer_data[108];
+//18 vertices per octagon times 6 octagons times 3 coordinates
+GLfloat vertex_buffer_data[18*6*3];
 
-GLfloat color_buffer_data[] = { /* RGB color values for 36 vertices */
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-	0.6, 0.2, 0.1,
-}; 
+GLfloat color_buffer_data[18*6*3]; /* RGB color values for all vertices */
 
-GLushort index_buffer_data[32*3*8];
+GLushort index_buffer_data[32*6*3];
 
 /*----------------------------------------------------------------*/
 
@@ -224,9 +156,8 @@ void OnIdle()
 	float RotationMatrixAnim[16];
 
 	/* Time dependent rotation */
-	//SetRotationY(angle, RotationMatrixAnim);
-	SetIdentityMatrix(RotationMatrixAnim);
-
+	SetRotationY(angle, RotationMatrixAnim);
+	
 	/* Apply model rotation; finally move cube down */
 	MultiplyMatrix(RotationMatrixAnim, InitialTransform, ModelMatrix);
 	MultiplyMatrix(TranslateDown, ModelMatrix, ModelMatrix);
@@ -375,6 +306,18 @@ void Initialize(void)
 {   
 	/* Set background (clear) color to dark blue */ 
 	glClearColor(0.2, 0.2, 0.2, 0.0);
+	
+	for(int i = 0; i<2*18*3; i+=3){
+		color_buffer_data[i] = 0.6;
+		color_buffer_data[i+1]= 0.3;
+		color_buffer_data[i+2] = 0.1;
+	}
+		
+	for(int i = 2*18*3; i<sizeof(color_buffer_data)/sizeof(GLfloat); i+=3){
+		color_buffer_data[i] = 1.0;
+		color_buffer_data[i+1] = 1.0;
+		color_buffer_data[i+2] = 0;
+	}
 
 	/* Enable depth testing */
 	glEnable(GL_DEPTH_TEST);
@@ -385,16 +328,16 @@ void Initialize(void)
 		GLfloat z = -2;
 		switch(i){
 			case 0:
-				z = -2;
+				z = -4;
 				break;
 			case 1:
-				z = -1.5;
+				z = -3.5;
 				break;
 			case 2:
-				z = 1.5;
+				z = 3.5;
 				break;
 			case 3:
-				z = 2;
+				z = 4;
 				break;	
 		}
 
@@ -413,47 +356,54 @@ void Initialize(void)
 		memcpy(vertex_buffer_data+i*27, mainVertices, sizeof(mainVertices));
 	}
 
+	//offset is for the two top and bottom octagons with 18 vertices each 
+	int offset = 2*18*3;
 	for(int i = 0; i<4; i++){
-		GLfloat x, y;
+		GLfloat x, y, z;
 
 		if(i<2){
-			y = 0.875;
+			y = 1.75;
 		}else{
-			y = -0.875;
+			y = -1.75;
 		}
 
 		if(i%2){
-			x = 0.875;
+			x = 1.75;
 		}else{
-			x = -0.875;
+			x = -1.75;
 		}
 		
-		GLfloat step = 0.125;
+		z = 2;
+		
+		GLfloat step = 0.25;
 		GLfloat smallVertices[] = {
 			//vertices for one of the small objects
 			x, y, -1,
-			x-step, y+3*step, -1,
-			x+step, y+3*step, -1,
-			x+3*step, y+step, -1,
-			x+3*step, y-step, -1,
-			x+step, y-3*step, -1,
-			x-step, y-3*step, -1,
-			x-3*step, y-step, -1,
-			x-3*step, y+step, -1,
-			x, y, 1,
-			x-step, y+3*step, 1,
-			x+step, y+3*step, 1,
-			x+3*step, y+step, 1,
-			x+3*step, y-step, 1,
-			x+step, y-3*step, 1,
-			x-step, y-3*step, 1,
-			x-3*step, y-step, 1,
-			x-3*step, y+step, 1,
+			x-step, y+3*step, -z,
+			x+step, y+3*step, -z,
+			x+3*step, y+step, -z,
+			x+3*step, y-step, -z,
+			x+step, y-3*step, -z,
+			x-step, y-3*step, -z,
+			x-3*step, y-step, -z,
+			x-3*step, y+step, -z,
+			x, y, z,
+			x-step, y+3*step, z,
+			x+step, y+3*step, z,
+			x+3*step, y+step, z,
+			x+3*step, y-step, z,
+			x+step, y-3*step, z,
+			x-step, y-3*step, z,
+			x-3*step, y-step, z,
+			x-3*step, y+step, z,
 		};
+		
+		memcpy(vertex_buffer_data+offset+i*18*3, smallVertices, sizeof(smallVertices));
 	}
 
-	//8 triangles for bottom and top each (16) plus 16 for the sides times 3 indices per triangle
-	for(int i = 0; i<32*3*8; i+=32*3){
+	//handle 18 vertices per octagon (3dimensional) for 6 octagons
+	for(int c = 0; c<6; c++){
+		int i = 18*c;
 		int j = i+9;
 		GLshort triangleIndices[] = {
 			//bottom
@@ -492,7 +442,7 @@ void Initialize(void)
 			j, j+7, j+8,
 			j, j+8, j+1
 		};
-		memcpy(index_buffer_data+i, triangleIndices, sizeof(triangleIndices));
+		memcpy(index_buffer_data+c*32*3, triangleIndices, sizeof(triangleIndices));
 	}
 		
 	/* Setup vertex, color, and index buffer objects */
@@ -521,7 +471,7 @@ void Initialize(void)
 	SetTranslation(0, -sqrtf(sqrtf(2.0) * 1.0), 0, TranslateDown);
 
 	/* Initial transformation matrix */
-	SetRotationX(45, InitialTransform);
+	SetRotationX(-90, InitialTransform);
 }
 
 
