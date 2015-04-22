@@ -5,7 +5,7 @@ CFLAGS = -g -Wall -Wextra -std=c99
 LDLIBS=-lm -lglut -lGLEW -lGL
 
 RotatingCube: $(OBJ)
-	 $(CC) -o $@ $^ $(CFLAGS) $(LDLIBS) && optirun ./$@
+	 $(CC) -o $@ $^ $(CFLAGS) $(LDLIBS)
 
 clean:
 	rm -f *.o RotatingCube 
