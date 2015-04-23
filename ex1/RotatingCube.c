@@ -44,7 +44,7 @@ GLuint vboCarousel, vboElements;
 GLuint cboCarousel, cboElements; 
 
 /* Define handle to an index buffer object */
-GLuint iboCarousel, iboElements;
+GLuint iboCarousel, iboElementsUp, iboElementsDown;
 
 
 /* Indices to vertex attributes; in this case positon and color */ 
@@ -59,6 +59,7 @@ GLuint ShaderProgram;
 float ProjectionMatrix[16]; /* Perspective projection matrix */
 float ViewMatrix[16]; /* Camera view matrix */ 
 float ModelMatrix[16]; /* Model matrix */ 
+float zMatrixUp[16], zMatrixDown[16];
 
 /* Transformation matrices for initial position */
 float TranslateOrigin[16];
@@ -149,8 +150,23 @@ void Display()
 	glBindBuffer(GL_ARRAY_BUFFER, cboElements);
 	glVertexAttribPointer(vColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElements);
+	//going up
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElementsUp);
 	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+	
+	float ModelUp[16];
+	MultiplyMatrix(ModelMatrix, zMatrixUp, ModelUp);
+	glUniformMatrix4fv(RotationUniform, 1, GL_TRUE, ModelUp);
+	
+	glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
+	
+	//going down
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElementsDown);
+	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+	
+	float ModelDown[16];
+	MultiplyMatrix(ModelMatrix, zMatrixDown, ModelDown);
+	glUniformMatrix4fv(RotationUniform, 1, GL_TRUE, ModelDown);
 	
 	glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 	
@@ -184,6 +200,10 @@ void OnIdle()
 	MultiplyMatrix(RotationMatrixAnim, InitialTransform, ModelMatrix);
 		
 	MultiplyMatrix(TranslateDown, ModelMatrix, ModelMatrix);
+	
+	float zMotion = sinf(glutGet(GLUT_ELAPSED_TIME)/1000.);
+	SetTranslation(0, 0, -zMotion, &zMatrixDown);
+	SetTranslation(0, 0, zMotion, &zMatrixUp);
 
 	/* Request redrawing forof window content */  
 	glutPostRedisplay();
@@ -212,9 +232,14 @@ void SetupDataBuffers()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboCarousel);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicesCarousel), indicesCarousel, GL_STATIC_DRAW);
 	
-	glGenBuffers(1, &iboElements);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElements);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicesElements), indicesElements, GL_STATIC_DRAW);
+	glGenBuffers(1, &iboElementsUp);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElementsUp);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicesElements)/2, indicesElements, GL_STATIC_DRAW);
+	
+	glGenBuffers(1, &iboElementsDown);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElementsDown);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicesElements)/2, 
+		indicesElements+(sizeof(indicesElements)/sizeof(GLshort)/2), GL_STATIC_DRAW);
 
 	glGenBuffers(1, &cboCarousel);
 	glBindBuffer(GL_ARRAY_BUFFER, cboCarousel);
@@ -395,17 +420,23 @@ void Initialize(void)
 	offset = 2*18*3;
 	for(int i = 0; i<4; i++){
 		GLfloat x, y, z;
-
-		if(i<2){
-			y = 1.75;
-		}else{
-			y = -1.75;
-		}
-
-		if(i%2){
-			x = 1.75;
-		}else{
-			x = -1.75;
+		
+		switch(i){
+			case 0:
+				x = -1.75;
+				y = 1.75;
+				break;
+			case 1:
+				x = 1.75;
+				y = -1.75;
+				break;
+			case 2:
+				x = -1.75;
+				y = -1.75;
+				break;
+			case 3:
+				x = 1.75;
+				y = 1.75;
 		}
 		
 		z = 2;
@@ -550,6 +581,9 @@ void Initialize(void)
 
 	/* Initial transformation matrix */
 	SetRotationX(-90, InitialTransform);
+	
+	SetIdentityMatrix(zMatrixDown);
+	SetIdentityMatrix(zMatrixUp);
 }
 
 
