@@ -38,13 +38,13 @@
 /*----------------------------------------------------------------*/
 
 /* Define handle to a vertex buffer object */
-GLuint VBO;
+GLuint vboCarousel, vboElements;
 
 /* Define handle to a color buffer object */
-GLuint CBO; 
+GLuint cboCarousel, cboElements; 
 
 /* Define handle to an index buffer object */
-GLuint IBO;
+GLuint iboCarousel, iboElements;
 
 
 /* Indices to vertex attributes; in this case positon and color */ 
@@ -66,13 +66,22 @@ float TranslateDown[16];
 float TranslateZ[16];
 float InitialTransform[16];
 
+int offset;
 
-//18 vertices per octagon times 6 octagons times 3 coordinates
-GLfloat vertex_buffer_data[18*6*3];
 
-GLfloat color_buffer_data[18*6*3]; /* RGB color values for all vertices */
+//18 vertices per octagon times 2 octagons times 3 coordinates
+GLfloat verticesCarousel[18*2*3];
 
-GLushort index_buffer_data[32*6*3];
+//handle small objects seperately
+GLfloat verticesElements[18*4*3];
+
+GLfloat colorCarousel[18*2*3]; /* RGB color values for all vertices */
+GLfloat colorElements[18*4*3];
+
+//32 triangles for 2 octagons with 3 coordinates each
+GLushort indicesCarousel[32*2*3];
+
+GLushort indicesElements[32*4*3];
 
 /*----------------------------------------------------------------*/
 
@@ -94,14 +103,14 @@ void Display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnableVertexAttribArray(vPosition);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, vboCarousel);
 	glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glEnableVertexAttribArray(vColor);
-	glBindBuffer(GL_ARRAY_BUFFER, CBO);
+	glBindBuffer(GL_ARRAY_BUFFER, cboCarousel);
 	glVertexAttribPointer(vColor, 3, GL_FLOAT,GL_FALSE, 0, 0);   
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboCarousel);
 	GLint size; 
 	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
 
@@ -133,9 +142,22 @@ void Display()
 	/* Issue draw command, using indexed triangle list */
 	glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
+	//draw small elements
+	glBindBuffer(GL_ARRAY_BUFFER, vboElements);
+	glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, cboElements);
+	glVertexAttribPointer(vColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElements);
+	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+	
+	glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
+	
 	/* Disable attributes */
 	glDisableVertexAttribArray(vPosition);
 	glDisableVertexAttribArray(vColor);   
+	
 
 	/* Swap between front and back buffer */ 
 	glutSwapBuffers();
@@ -157,9 +179,10 @@ void OnIdle()
 
 	/* Time dependent rotation */
 	SetRotationY(angle, RotationMatrixAnim);
-	
+		
 	/* Apply model rotation; finally move cube down */
 	MultiplyMatrix(RotationMatrixAnim, InitialTransform, ModelMatrix);
+		
 	MultiplyMatrix(TranslateDown, ModelMatrix, ModelMatrix);
 
 	/* Request redrawing forof window content */  
@@ -177,17 +200,29 @@ void OnIdle()
 
 void SetupDataBuffers()
 {
-	glGenBuffers(1, &VBO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_buffer_data), vertex_buffer_data, GL_STATIC_DRAW);
+	glGenBuffers(1, &vboCarousel);
+	glBindBuffer(GL_ARRAY_BUFFER, vboCarousel);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(verticesCarousel), verticesCarousel, GL_STATIC_DRAW);
+	
+	glGenBuffers(1, &vboElements);
+	glBindBuffer(GL_ARRAY_BUFFER, vboElements);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(verticesElements), verticesElements, GL_STATIC_DRAW);
 
-	glGenBuffers(1, &IBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index_buffer_data), index_buffer_data, GL_STATIC_DRAW);
+	glGenBuffers(1, &iboCarousel);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboCarousel);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicesCarousel), indicesCarousel, GL_STATIC_DRAW);
+	
+	glGenBuffers(1, &iboElements);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboElements);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicesElements), indicesElements, GL_STATIC_DRAW);
 
-	glGenBuffers(1, &CBO);
-	glBindBuffer(GL_ARRAY_BUFFER, CBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(color_buffer_data), color_buffer_data, GL_STATIC_DRAW);
+	glGenBuffers(1, &cboCarousel);
+	glBindBuffer(GL_ARRAY_BUFFER, cboCarousel);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colorCarousel), colorCarousel, GL_STATIC_DRAW);
+	
+	glGenBuffers(1, &cboElements);
+	glBindBuffer(GL_ARRAY_BUFFER, cboElements);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colorElements), colorElements, GL_STATIC_DRAW);
 }
 
 
@@ -307,16 +342,16 @@ void Initialize(void)
 	/* Set background (clear) color to dark blue */ 
 	glClearColor(0.2, 0.2, 0.2, 0.0);
 	
-	for(int i = 0; i<2*18*3; i+=3){
-		color_buffer_data[i] = 0.6;
-		color_buffer_data[i+1]= 0.3;
-		color_buffer_data[i+2] = 0.1;
+	for(int i = 0; i<sizeof(colorCarousel)/sizeof(GLfloat); i+=3){
+		colorCarousel[i] = 0.6;
+		colorCarousel[i+1]= 0.3;
+		colorCarousel[i+2] = 0.1;
 	}
 		
-	for(int i = 2*18*3; i<sizeof(color_buffer_data)/sizeof(GLfloat); i+=3){
-		color_buffer_data[i] = 1.0;
-		color_buffer_data[i+1] = 1.0;
-		color_buffer_data[i+2] = 0;
+	for(int i = 0; i<sizeof(colorElements)/sizeof(GLfloat); i+=3){
+		colorElements[i] = 1.0;
+		colorElements[i+1] = 1.0;
+		colorElements[i+2] = 0;
 	}
 
 	/* Enable depth testing */
@@ -353,11 +388,11 @@ void Initialize(void)
 			-4, 2, z
 		};
 
-		memcpy(vertex_buffer_data+i*27, mainVertices, sizeof(mainVertices));
+		memcpy(verticesCarousel+i*27, mainVertices, sizeof(mainVertices));
 	}
 
 	//offset is for the two top and bottom octagons with 18 vertices each 
-	int offset = 2*18*3;
+	offset = 2*18*3;
 	for(int i = 0; i<4; i++){
 		GLfloat x, y, z;
 
@@ -376,7 +411,7 @@ void Initialize(void)
 		z = 2;
 		
 		GLfloat step = 0.25;
-		GLfloat smallVertices[] = {
+		GLfloat currentVertices[] = {
 			//vertices for one of the small objects
 			x, y, -1,
 			x-step, y+3*step, -z,
@@ -397,12 +432,11 @@ void Initialize(void)
 			x-3*step, y-step, z,
 			x-3*step, y+step, z,
 		};
-		
-		memcpy(vertex_buffer_data+offset+i*18*3, smallVertices, sizeof(smallVertices));
+		memcpy(verticesElements+i*18*3, currentVertices, sizeof(currentVertices));
 	}
 
-	//handle 18 vertices per octagon (3dimensional) for 6 octagons
-	for(int c = 0; c<6; c++){
+	//handle 18 vertices per octagon (3dimensional) for 2 octagons
+	for(int c = 0; c<2; c++){
 		int i = 18*c;
 		int j = i+9;
 		GLshort triangleIndices[] = {
@@ -442,7 +476,51 @@ void Initialize(void)
 			j, j+7, j+8,
 			j, j+8, j+1
 		};
-		memcpy(index_buffer_data+c*32*3, triangleIndices, sizeof(triangleIndices));
+		memcpy(indicesCarousel+c*32*3, triangleIndices, sizeof(triangleIndices));
+	}
+	
+	//handle 18 vertices per octagon (3dimensional) for 4 elements
+	for(int c = 0; c<4; c++){
+		int i = 18*c;
+		int j = i+9;
+		GLshort triangleIndices[] = {
+			//bottom
+			i, i+1, i+2,
+			i, i+2, i+3,
+			i, i+3, i+4,
+			i, i+4, i+5,
+			i, i+5, i+6,
+			i, i+6, i+7,
+			i, i+7, i+8,
+			i, i+8, i+1,
+			//sides
+			i+1, i+2, i+10,
+			i+10, i+11, i+2,
+			i+2, i+3, i+11,
+			i+11, i+12, i+3,
+			i+3, i+4, i+12,
+			i+12, i+13, i+4,
+			i+4, i+5, i+13,
+			i+13, i+14, i+5,
+			i+5, i+6, i+14,
+			i+14, i+15, i+6,
+			i+6, i+7, i+15,
+			i+15, i+16, i+7,
+			i+7, i+8, i+16,
+			i+16, i+17, i+8,
+			i+8, i+1, i+17,
+			i+17, i+10, i+1,
+			//top
+			j, j+1, j+2,
+			j, j+2, j+3,
+			j, j+3, j+4,
+			j, j+4, j+5,
+			j, j+5, j+6,
+			j, j+6, j+7,
+			j, j+7, j+8,
+			j, j+8, j+1
+		};
+		memcpy(indicesElements+c*32*3, triangleIndices, sizeof(triangleIndices));
 	}
 		
 	/* Setup vertex, color, and index buffer objects */
