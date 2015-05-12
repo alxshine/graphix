@@ -1,12 +1,12 @@
 CC = gcc
-OBJ = RotatingCube.o LoadShader.o Matrix.o
+OBJ = Carousel.o LoadShader.o Matrix.o
 CFLAGS = -g -Wall -Wextra -std=c99
 
 LDLIBS=-lm -lglut -lGLEW -lGL
 
-RotatingCube: $(OBJ)
+Carousel: $(OBJ)
 	 $(CC) -o $@ $^ $(CFLAGS) $(LDLIBS)
 
 clean:
-	rm -f *.o RotatingCube 
+	rm -f *.o Carousel
 .PHONY: all clean
