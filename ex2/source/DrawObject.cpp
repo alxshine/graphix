@@ -46,3 +46,14 @@ void DrawObject::setupDataBuffers(){
 	glBindBuffer(GL_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ARRAY_BUFFER, i_size*3*sizeof(GLushort), indices, GL_STATIC_DRAW);
 }
+
+void DrawObject::bindDataBuffers(){
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+}
+DrawObject::~DrawObject(){
+	delete vertices;
+	delete indices;
+}

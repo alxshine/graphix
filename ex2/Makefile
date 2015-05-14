@@ -1,5 +1,5 @@
-CC = gcc
-LD = gcc
+CC = g++
+LD = g++
 
 OBJ = Interaction.o DrawObject.o LoadShader.o Matrix.o StringExtra.o OBJParser.o List.o
 TARGET = Interaction

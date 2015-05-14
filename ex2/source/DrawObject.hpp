@@ -23,6 +23,8 @@ class DrawObject{
 		DrawObject(obj_scene_data* data);
 		DrawObject(GLfloat* vertex_array, int vertex_size, GLushort* index_array, int index_size);
 		~DrawObject();
+		
+		void bindDataBuffers();
 };
 
 #endif

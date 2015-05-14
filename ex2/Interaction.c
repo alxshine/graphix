@@ -34,17 +34,16 @@
 #include "Matrix.h"        /* Functions for matrix handling */
 #include "OBJParser.h"     /* Loading function for triangle meshes in OBJ format */
 
+#include "DrawObject.hpp"
+
 
 /*----------------------------------------------------------------*/
 
 /* Flag for starting/stopping animation */
-GLboolean anim = GL_TRUE;
+GLboolean anim, zoomIn, zoomOut = GL_FALSE;
 
-/* Define handles to two vertex buffer objects */
-GLuint VBO1, VBO2;
-
-/* Define handles to two index buffer objects */
-GLuint IBO1, IBO2;
+DrawObject* carousel, *ground = 0;
+DrawObject *cups[4] = {0,0,0,0};
 
 /* Indices to vertex attributes; in this case positon only */ 
 enum DataID {vPosition = 0}; 
@@ -59,7 +58,8 @@ GLuint ShaderProgram;
 /* Matrices for uniform variables in vertex shader */
 float ProjectionMatrix[16]; /* Perspective projection matrix */
 float ViewMatrix[16];       /* Camera view matrix */ 
-float ModelMatrix[16];      /* Model matrix */ 
+float ModelMatrix[16];      /* Model matrix */
+float CupModel[4][16];
   
 /* Transformation matrices for model rotation */
 float RotationMatrixAnimX[16];
@@ -67,25 +67,28 @@ float RotationMatrixAnimY[16];
 float RotationMatrixAnimZ[16];
 float RotationMatrixAnim[16];
 
+float TranslationMatrixUp[16];
+float TranslationMatrixDown[16];
+float ZoomMatrix[16];
+float StdRotMat[16];
+
 /* Variables for storing current rotation angles */
-float angleX, angleY, angleZ = 0.0f; 
+float angleX, angleY, angleZ, rotAngle = 0.0f;
+float yMotion = 0;
+float yPhase = 0;
+
+float camera_disp = -20.0;
 
 /* Indices to active rotation axes */
-enum {Xaxis=0, Yaxis=1, Zaxis=2};
-int axis = Yaxis;
+enum {Xpos=0, Ypos=1, Zpos=2,Xneg=3, Yneg=4, Zneg=5};
+int axis = Ypos;
 
 /* Indices to active triangle mesh */
 enum {Model1=0, Model2=1};
 int model = Model1; 
 
-/* Arrays for holding vertex data of the two models */
-GLfloat *vertex_buffer_data1, *vertex_buffer_data2;
-
-/* Arrays for holding indices of the two models */
-GLushort *index_buffer_data1,  *index_buffer_data2;
-
 /* Structures for loading of OBJ data */
-obj_scene_data data1, data2;
+obj_scene_data data;
 
 /* Reference time for animation */
 int oldTime = 0;
@@ -113,18 +116,7 @@ void Display()
 
     glEnableVertexAttribArray(vPosition);
 
-    /* Bind buffer with vertex data of currently active object */
-    if(model == Model1)
-        glBindBuffer(GL_ARRAY_BUFFER, VBO1);
-    else if(model == Model2)
-        glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-    glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-   /* Bind buffer with index data of currently active object */
-    if(model == Model1)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO1);
-    else if(model == Model2)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO2);
+    carousel->bindDataBuffers();
 
     GLint size; 
     glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
@@ -152,13 +144,31 @@ void Display()
         fprintf(stderr, "Could not bind uniform ModelMatrix\n");
         exit(-1);
     }
-    glUniformMatrix4fv(RotationUniform, 1, GL_TRUE, ModelMatrix);  
+    glUniformMatrix4fv(RotationUniform, 1, GL_TRUE, carousel->InitialTransform);  
 
     /* Set state to only draw wireframe (no lighting used, yet) */
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     /* Issue draw command, using indexed triangle list */
     glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
+
+
+	/* ground */
+	ground->bindDataBuffers();
+
+    glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+
+	glUniformMatrix4fv(RotationUniform, 1, GL_TRUE, ground->InitialTransform);
+	glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
+	
+	/* cups */
+	for(int i = 0; i<4; i++){
+		cups[i]->bindDataBuffers();
+		glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+
+		glUniformMatrix4fv(RotationUniform, 1, GL_TRUE, CupModel[i]);
+		glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
+	}
 
     /* Disable attributes */
     glDisableVertexAttribArray(vPosition);
@@ -187,15 +197,15 @@ void Mouse(int button, int state, int x, int y)
         switch(button) 
 	{
 	    case GLUT_LEFT_BUTTON:    
-	        axis = Xaxis;
+	        axis = Xpos;
 		break;
 
 	    case GLUT_MIDDLE_BUTTON:  
-  	        axis = Yaxis;
+  	        axis = Ypos;
 	        break;
 		
 	    case GLUT_RIGHT_BUTTON: 
-	        axis = Zaxis;
+	        axis = Zpos;
 		break;
 	}
 	anim = GL_TRUE;
@@ -213,43 +223,81 @@ void Mouse(int button, int state, int x, int y)
 *
 *******************************************************************/
 
+/*
+ * We use the w,a,s and d keys to rotate around the x, and y axies.
+ * e and q rotate around z 
+ */
 void Keyboard(unsigned char key, int x, int y)   
 {
     switch( key ) 
     {
-	/* Activate model one or two */
-	case '1': 
-		model = Model1;
-		break;
-
-	case '2':
-		model = Model2; 	
-		break;
-
-	/* Toggle animation */
-	case '0':
-		if (anim)
-			anim = GL_FALSE;		
-		else
-			anim = GL_TRUE;
-		break;
 
 	/* Reset initial rotation of object */
 	case 'o':
-	    SetIdentityMatrix(RotationMatrixAnimX);
-	    SetIdentityMatrix(RotationMatrixAnimY);
-	    SetIdentityMatrix(RotationMatrixAnimZ);
-	    angleX = 0.0;
-	    angleY = 0.0;
-	    angleZ = 0.0;
+		camera_disp = -20.0;
+	    SetIdentityMatrix(RotationMatrixAnim);	    
+	    angleX = angleY = angleZ = rotAngle = 0.0f;
 	    break;
 	    
-	case 'q': case 'Q':  
+	case 's':
+		anim = GL_TRUE;
+	    axis = Xpos;
+		break;
+
+	case 'd':
+		anim = GL_TRUE;
+  	    axis = Ypos;
+	    break;
+	    
+	case 'w':
+		anim = GL_TRUE;
+	    axis = Xneg;
+		break;
+
+	case 'a':
+		anim = GL_TRUE;
+  	    axis = Yneg;
+	    break;
+	    
+	case 'q':
+		anim = GL_TRUE;
+  	    axis = Zpos;
+	    break;
+	    
+	case 'e':
+		anim = GL_TRUE;
+  	    axis = Zneg;
+	    break;
+	    
+	case 'c': case 'C': 
+	    delete carousel;
 	    exit(0);    
+		break;
+	case '+':
+		zoomIn = GL_TRUE;
+		break;
+	
+	case '-':
+		zoomOut = GL_TRUE;
 		break;
     }
 
     glutPostRedisplay();
+}
+
+/**
+ *  stops animation when key is released
+ **/
+void KeyUp(unsigned char key, int x, int y){
+	anim = GL_FALSE;
+	switch(key){
+		case '+':
+			zoomIn = GL_FALSE;
+			break;
+		case '-':
+			zoomOut = GL_FALSE;
+			break;
+	}
 }
 
 
@@ -268,64 +316,87 @@ void OnIdle()
     int newTime = glutGet(GLUT_ELAPSED_TIME);
     int delta = newTime - oldTime;
     oldTime = newTime;
+    
+    /* Carousel turning */
+    rotAngle = fmod(delta/15.0, 360.0);  
+	SetRotationY(rotAngle, StdRotMat);
+	MultiplyMatrix(StdRotMat,carousel->InitialTransform,carousel->InitialTransform);
+	
+	/* cups moving up and down */
+	yPhase = yPhase + delta/1000.0;
+	yMotion = sinf(yPhase);
+	SetTranslation(0.0,yMotion,0.0,TranslationMatrixUp);
+	SetTranslation(0.0,-yMotion,0.0,TranslationMatrixDown);
+	
+	/* reset matrizies */
+	SetIdentityMatrix(RotationMatrixAnimX);
+	SetIdentityMatrix(RotationMatrixAnimY);
+	SetIdentityMatrix(RotationMatrixAnimZ);
 
+	/* handels rotation when key is pressed */
     if(anim)
     {
-        /* Increment rotation angles and update matrix */
-        if(axis == Xaxis)
+        if(axis == Xpos)
 	{
-  	    angleX = fmod(angleX + delta/20.0, 360.0);  
+  	    angleX = fmod(delta/20.0, 360.0);  
 	    SetRotationX(angleX, RotationMatrixAnimX);
 	}
-	else if(axis == Yaxis)
+	else if(axis == Ypos)
 	{
-	    angleY = fmod(angleY + delta/20.0, 360.0); 
+	    angleY = fmod(delta/20.0, 360.0); 
 	    SetRotationY(angleY, RotationMatrixAnimY);  
 	}
-	else if(axis == Zaxis)
+	else if(axis == Zpos)
 	{			
-	    angleZ = fmod(angleZ + delta/20.0, 360.0); 
+	    angleZ = fmod(delta/20.0, 360.0); 
 	    SetRotationZ(angleZ, RotationMatrixAnimZ);
-	}	    
+	}
+	else if(axis == Xneg)
+	{
+	    angleX = fmod(-delta/20.0, 360.0); 
+	    SetRotationX(angleX, RotationMatrixAnimX);  
+	}
+	else if(axis == Zneg)
+	{			
+	    angleZ = fmod(-delta/20.0, 360.0); 
+	    SetRotationZ(angleZ, RotationMatrixAnimZ);
+	}else if(axis == Yneg)
+	{
+	    angleY = fmod(-delta/20.0, 360.0); 
+	    SetRotationY(angleY, RotationMatrixAnimY);  
+	}
+	   
     }
+    
+    /* Zooming with +, and - */
+    if(zoomIn && camera_disp<-10){
+		camera_disp += delta/20.0;
+	}
+	else if(zoomOut && camera_disp>-40){
+		camera_disp -= delta/20.0;
+	}
+		SetTranslation(0.0, 0.0, camera_disp, ZoomMatrix);
 
-    /* Update of transformation matrices 
-     * Note order of transformations and rotation of reference axes */
-    MultiplyMatrix(RotationMatrixAnimX, RotationMatrixAnimY, RotationMatrixAnim);
-    MultiplyMatrix(RotationMatrixAnim, RotationMatrixAnimZ, ModelMatrix);	
+    /* Transform Model Matrix */
+    MultiplyMatrix(RotationMatrixAnimX, RotationMatrixAnim, RotationMatrixAnim);
+    MultiplyMatrix(RotationMatrixAnimY, RotationMatrixAnim, RotationMatrixAnim);
+    MultiplyMatrix(RotationMatrixAnimZ, RotationMatrixAnim, RotationMatrixAnim);
+    MultiplyMatrix(ZoomMatrix,RotationMatrixAnim,ViewMatrix);
+    
+    for(int i = 0; i<4; i++){
+		MultiplyMatrix(StdRotMat,cups[i]->InitialTransform,cups[i]->InitialTransform);
+		if(i<2){
+			MultiplyMatrix(TranslationMatrixUp,cups[i]->InitialTransform, CupModel[i]);
+		}
+		else{
+			MultiplyMatrix(TranslationMatrixDown,cups[i]->InitialTransform, CupModel[i]);
+		}
+	}
+    
     
     /* Issue display refresh */
     glutPostRedisplay();
 }
-
-
-/******************************************************************
-*
-* SetupDataBuffers
-*
-* Create buffer objects and load data into buffers
-*
-*******************************************************************/
-
-void SetupDataBuffers()
-{
-    glGenBuffers(1, &VBO1);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO1);
-    glBufferData(GL_ARRAY_BUFFER, data1.vertex_count*3*sizeof(GLfloat), vertex_buffer_data1, GL_STATIC_DRAW);
-	
-    glGenBuffers(1, &VBO2);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-    glBufferData(GL_ARRAY_BUFFER, data2.vertex_count*3*sizeof(GLfloat), vertex_buffer_data2, GL_STATIC_DRAW);  
-    
-    glGenBuffers(1, &IBO1);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO1);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data1.face_count*3*sizeof(GLushort), index_buffer_data1, GL_STATIC_DRAW);
-    
-    glGenBuffers(1, &IBO2);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO2);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data2.face_count*3*sizeof(GLushort), index_buffer_data2, GL_STATIC_DRAW);
-}
-
 
 /******************************************************************
 *
@@ -442,77 +513,40 @@ void CreateShaderProgram()
 
 void Initialize()
 {   
-    int i;
     int success;
 
-    /* Load first OBJ model */
-    char* filename1 = "models/teapot.obj"; 
-    success = parse_obj_scene(&data1, filename1);
-
+    /* Load Objects */
+    success = parse_obj_scene(&data, "models/carousel.obj");
     if(!success)
         printf("Could not load file. Exiting.\n");
-
-    /* Load second OBJ model */
-    char* filename2 = "models/suzanne.obj";
-    success = parse_obj_scene(&data2, filename2);
-    
-    if(!success)
-        printf("Could not load file. Exiting.\n");
-
-    /*  Copy mesh data from structs into appropriate arrays */ 
-    int vert = data1.vertex_count;
-    int indx = data1.face_count;
-
-    vertex_buffer_data1 = (GLfloat*) calloc (vert*3, sizeof(GLfloat));
-    index_buffer_data1 = (GLushort*) calloc (indx*3, sizeof(GLushort));
-  
-    /* Vertices */
-    for(i=0; i<vert; i++)
-    {
-        vertex_buffer_data1[i*3] = (GLfloat)(*data1.vertex_list[i]).e[0];
-	vertex_buffer_data1[i*3+1] = (GLfloat)(*data1.vertex_list[i]).e[1];
-	vertex_buffer_data1[i*3+2] = (GLfloat)(*data1.vertex_list[i]).e[2];
-    }
-
-    /* Indices */
-    for(i=0; i<indx; i++)
-    {
-	index_buffer_data1[i*3] = (GLushort)(*data1.face_list[i]).vertex_index[0];
-	index_buffer_data1[i*3+1] = (GLushort)(*data1.face_list[i]).vertex_index[1];
-	index_buffer_data1[i*3+2] = (GLushort)(*data1.face_list[i]).vertex_index[2];
-    }
-
-    vert = data2.vertex_count;
-    indx = data2.face_count;
-
-    vertex_buffer_data2 = (GLfloat*) calloc (vert*3, sizeof(GLfloat));
-    index_buffer_data2 = (GLushort*) calloc (indx*3, sizeof(GLushort));
- 
-    /* Vertices */
-    for(i=0; i<vert; i++)
-    {
-	vertex_buffer_data2[i*3] = (GLfloat)(*data2.vertex_list[i]).e[0];
-	vertex_buffer_data2[i*3+1] = (GLfloat)(*data2.vertex_list[i]).e[1];
-	vertex_buffer_data2[i*3+2] = (GLfloat)(*data2.vertex_list[i]).e[2];
-    }
-
-    /* Indices */
-    for(i=0; i<indx; i++)
-    {
-	index_buffer_data2[i*3] = (GLushort)(*data2.face_list[i]).vertex_index[0];
-	index_buffer_data2[i*3+1] = (GLushort)(*data2.face_list[i]).vertex_index[1];
-	index_buffer_data2[i*3+2] = (GLushort)(*data2.face_list[i]).vertex_index[2];
-    }
+	carousel = new DrawObject(&data);
+	SetIdentityMatrix(carousel->InitialTransform);
 	
-    /* Set background (clear) color to blue */ 
-    glClearColor(0.0, 0.0, 0.4, 0.0);
+    success = parse_obj_scene(&data, "models/ground.obj");
+    if(!success)
+        printf("Could not load file. Exiting.\n");
+	ground = new DrawObject(&data);
+	SetTranslation(0.0,-3.5,0.0,ground->InitialTransform);
+	
+    success = parse_obj_scene(&data, "models/cup.obj");
+    if(!success)
+        printf("Could not load file. Exiting.\n");
+    
+    for(int i = 0; i<4; i++){
+		cups[i] = new DrawObject(&data);
+	}
+	
+	SetTranslation(4.0,0.0,0.0,cups[0]->InitialTransform);
+    SetTranslation(-4.0,0.0,0.0,cups[1]->InitialTransform);
+    SetTranslation(0.0,0.0,4.0,cups[2]->InitialTransform);
+    SetTranslation(0.0,0.0,-4.0,cups[3]->InitialTransform);
+	
+    /* Set background (clear) color to Black */ 
+    glClearColor(0.0, 0.0, 0.0, 0.0);
 
     /* Enable depth testing */
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);    
-
-    /* Setup vertex, color, and index buffer objects */
-    SetupDataBuffers();
 
     /* Setup shaders and shader program */
     CreateShaderProgram();  
@@ -521,22 +555,25 @@ void Initialize()
     SetIdentityMatrix(ProjectionMatrix);
     SetIdentityMatrix(ViewMatrix);
     SetIdentityMatrix(ModelMatrix);
+    for(int i = 0; i<4; i++){
+		SetIdentityMatrix(CupModel[i]);
+	}
 
     /* Initialize animation matrices */
     SetIdentityMatrix(RotationMatrixAnimX);
     SetIdentityMatrix(RotationMatrixAnimY);
     SetIdentityMatrix(RotationMatrixAnimZ);
     SetIdentityMatrix(RotationMatrixAnim);
+    SetIdentityMatrix(StdRotMat);
     
     /* Set projection transform */
-    float fovy = 45.0;
+    float fovy = 60.0;
     float aspect = 1.0; 
     float nearPlane = 1.0; 
     float farPlane = 50.0;
     SetPerspectiveMatrix(fovy, aspect, nearPlane, farPlane, ProjectionMatrix);
 
     /* Set viewing transform */
-    float camera_disp = -10.0;
     SetTranslation(0.0, 0.0, camera_disp, ViewMatrix);
 }
 
@@ -574,6 +611,7 @@ int main(int argc, char** argv)
     glutIdleFunc(OnIdle);
     glutDisplayFunc(Display);
     glutKeyboardFunc(Keyboard); 
+    glutKeyboardUpFunc(KeyUp);
     glutMouseFunc(Mouse);  
 
     glutMainLoop();
