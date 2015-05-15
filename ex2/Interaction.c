@@ -40,7 +40,9 @@
 /*----------------------------------------------------------------*/
 
 /* Flag for starting/stopping animation */
-GLboolean anim, zoomIn, zoomOut = GL_FALSE;
+GLboolean zoomIn, zoomOut = GL_FALSE;
+
+GLboolean anim = GL_TRUE;
 
 DrawObject* carousel, *ground = 0;
 DrawObject *cups[4] = {0,0,0,0};
@@ -83,9 +85,9 @@ float camera_disp = -20.0;
 enum {Xpos=0, Ypos=1, Zpos=2,Xneg=3, Yneg=4, Zneg=5};
 int axis = Ypos;
 
-/* Indices to active triangle mesh */
-enum {Model1=0, Model2=1};
-int model = Model1; 
+/* Modes */
+enum {mode1=0, mode2=1};
+int mode = mode1;
 
 /* Structures for loading of OBJ data */
 obj_scene_data data;
@@ -180,41 +182,6 @@ void Display()
 
 /******************************************************************
 *
-* Mouse
-*
-* Function is called on mouse button press; has been seta
-* with glutMouseFunc(), x and y specify mouse coordinates,
-* but are not used here.
-*
-*******************************************************************/
-
-void Mouse(int button, int state, int x, int y) 
-{
-    if(state == GLUT_DOWN) 
-    {
-      /* Depending on button pressed, set rotation axis,
-       * turn on animation */
-        switch(button) 
-	{
-	    case GLUT_LEFT_BUTTON:    
-	        axis = Xpos;
-		break;
-
-	    case GLUT_MIDDLE_BUTTON:  
-  	        axis = Ypos;
-	        break;
-		
-	    case GLUT_RIGHT_BUTTON: 
-	        axis = Zpos;
-		break;
-	}
-	anim = GL_TRUE;
-    }
-}
-
-
-/******************************************************************
-*
 * Keyboard
 *
 * Function to be called on key press in window; set by
@@ -229,74 +196,112 @@ void Mouse(int button, int state, int x, int y)
  */
 void Keyboard(unsigned char key, int x, int y)   
 {
-    switch( key ) 
-    {
-
-	/* Reset initial rotation of object */
-	case 'o':
-		camera_disp = -20.0;
-	    SetIdentityMatrix(RotationMatrixAnim);	    
-	    angleX = angleY = angleZ = rotAngle = 0.0f;
-	    break;
-	    
-	case 's':
-		anim = GL_TRUE;
-	    axis = Xpos;
-		break;
-
-	case 'd':
-		anim = GL_TRUE;
-  	    axis = Ypos;
-	    break;
-	    
-	case 'w':
-		anim = GL_TRUE;
-	    axis = Xneg;
-		break;
-
-	case 'a':
-		anim = GL_TRUE;
-  	    axis = Yneg;
-	    break;
-	    
-	case 'q':
-		anim = GL_TRUE;
-  	    axis = Zpos;
-	    break;
-	    
-	case 'e':
-		anim = GL_TRUE;
-  	    axis = Zneg;
-	    break;
-	    
-	case 'c': case 'C': 
-	    delete carousel;
-	    exit(0);    
-		break;
-	case '+':
-		zoomIn = GL_TRUE;
-		break;
 	
-	case '-':
-		zoomOut = GL_TRUE;
-		break;
-    }
+	if(mode == mode1){
+		switch( key){
+		case '2':
+			camera_disp = -20.0;
+		    SetIdentityMatrix(RotationMatrixAnim);	    
+		    angleX = angleY = angleZ = rotAngle = 0.0f;
+		    mode = mode2;
+		    anim = GL_FALSE;
+		    break;
+		case ' ':
+			if(anim)
+				anim = GL_FALSE;
+			else{
+				if(axis == Ypos)
+					axis = Yneg;
+				else
+					axis = Ypos;
+				anim = GL_TRUE;
+			}
+			
+			break;
+			
+		case 'c': case 'C': 
+		    delete carousel;
+		    exit(0);    
+			break;
+		}
+	}
+	else{
+	    switch( key ) 
+	    {
+		case '1':
+			mode = mode1;
+			anim = GL_TRUE;
+			axis = Ypos;
+	
+		/* Reset initial rotation of object */
+		case 'o':
+			camera_disp = -20.0;
+		    SetIdentityMatrix(RotationMatrixAnim);	    
+		    angleX = angleY = angleZ = rotAngle = 0.0f;
+		    break;
+		    
+		case 's':
+			anim = GL_TRUE;
+		    axis = Xpos;
+			break;
+	
+		case 'd':
+			anim = GL_TRUE;
+	  	    axis = Ypos;
+		    break;
+		    
+		case 'w':
+			anim = GL_TRUE;
+		    axis = Xneg;
+			break;
+	
+		case 'a':
+			anim = GL_TRUE;
+	  	    axis = Yneg;
+		    break;
+		    
+		case 'q':
+			anim = GL_TRUE;
+	  	    axis = Zpos;
+		    break;
+		    
+		case 'e':
+			anim = GL_TRUE;
+	  	    axis = Zneg;
+		    break;
+		    
+		case 'c': case 'C': 
+		    delete carousel;
+		    exit(0);    
+			break;
+			
+		case '+':
+			zoomIn = GL_TRUE;
+			break;
+		
+		case '-':
+			zoomOut = GL_TRUE;
+			break;
+	    }
+	}
 
     glutPostRedisplay();
 }
 
 /**
- *  stops animation when key is released
+ *  stops animation when key is released in mode 2
  **/
 void KeyUp(unsigned char key, int x, int y){
-	anim = GL_FALSE;
-	switch(key){
-		case '+':
-			zoomIn = GL_FALSE;
-			break;
-		case '-':
-			zoomOut = GL_FALSE;
-			break;
+	if( mode == mode2 ){
+		anim = GL_FALSE;
+		switch(key){
+			case '+':
+				zoomIn = GL_FALSE;
+				break;
+			case '-':
+				zoomOut = GL_FALSE;
+				break;
+		}
 	}
 }
 
@@ -612,7 +617,6 @@ int main(int argc, char** argv)
     glutDisplayFunc(Display);
     glutKeyboardFunc(Keyboard); 
     glutKeyboardUpFunc(KeyUp);
-    glutMouseFunc(Mouse);  
 
     glutMainLoop();
 
