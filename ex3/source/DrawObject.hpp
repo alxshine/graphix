@@ -12,26 +12,25 @@
 //include local stuff
 #include "OBJParser.h"
 
+using namespace glm;
 
 class DrawObject {
 private:
     void setupDataBuffers();
 
 public:
-    GLuint vbo, ibo;
-    glm::mat4 InitialTransform, DispositionMatrix;
+    GLuint vbo, nbo, ibo, cbo;
+    mat4 InitialTransform, DispositionMatrix;
 
-    GLfloat *vertices;
+    GLfloat *vertices, *colors, *normals;
     GLushort *indices;
-    int v_size, i_size;
+    int v_size, i_size, n_size;
 
     enum DataID {
-        vPosition = 0, vColor = 1
+        vPosition = 0, vColor = 1, vNormal = 2
     };
 
-    DrawObject(obj_scene_data *data);
-
-    DrawObject(GLfloat *vertex_array, int vertex_size, GLushort *index_array, int index_size);
+    DrawObject(obj_scene_data *data, glm::vec3 color);
 
     ~DrawObject();
 

@@ -79,6 +79,8 @@ float yPhase = 0;
 float cameraDispositionX = 20.f;
 float cameraDispositionY = 5.f;
 
+vec4 light = vec4(0, 1, 1, 1);
+
 /* Structures for loading of OBJ data */
 obj_scene_data data;
 
@@ -115,6 +117,14 @@ void Display() {
         exit(-1);
     }
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
+
+    /* associate program with light */
+    GLint LightID = glGetUniformLocation(ShaderProgram, "LightVector");
+    if (LightID == -1) {
+        fprintf(stderr, "Could not bind uniform LightVector\n");
+        exit(-1);
+    }
+    glUniform4fv(LightID, 1, value_ptr(light));
 
     ground->draw(ShaderProgram);
     carousel->draw(ShaderProgram);
@@ -304,12 +314,12 @@ void Initialize() {
     success = parse_obj_scene(&data, "models/carousel.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
-    carousel = new DrawObject(&data);
+    carousel = new DrawObject(&data, vec3(0.4, 0.1, 0.65));
 
     success = parse_obj_scene(&data, "models/ground.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
-    ground = new DrawObject(&data);
+    ground = new DrawObject(&data, vec3(0.2, 0.1, 0.1));
     ground->InitialTransform = translate(mat4(1), vec3(0, -3.5f, 0));
 
     success = parse_obj_scene(&data, "models/cup.obj");
@@ -317,7 +327,7 @@ void Initialize() {
         printf("Could not load file. Exiting.\n");
 
     for (int i = 0; i < 4; i++) {
-        cups[i] = new DrawObject(&data);
+        cups[i] = new DrawObject(&data, vec3(0.2, 0.8, 0.8));
     }
 
     cups[0]->InitialTransform = translate(mat4(1), vec3(4, 0, 0));

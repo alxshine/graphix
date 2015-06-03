@@ -14,7 +14,7 @@ set(SOURCE_FILES
     source/OBJParser.h
     source/StringExtra.c
     source/StringExtra.h
-    Interaction.cpp)
+    Lighting.cpp)
 
 add_executable(ex3 ${SOURCE_FILES})
 target_compile_features(ex3 PRIVATE cxx_range_for)
