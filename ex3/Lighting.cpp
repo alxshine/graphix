@@ -76,10 +76,10 @@ float rotAngle = 0.0f;
 float yMotion = 0;
 float yPhase = 0;
 
-float cameraDispositionX = 20.f;
+float cameraDispositionZ = 20.f;
 float cameraDispositionY = 5.f;
 
-vec4 light = vec4(0, 1, 1, 1);
+vec3 LightPosition = vec3(0, 2, -10);
 
 /* Structures for loading of OBJ data */
 obj_scene_data data;
@@ -119,12 +119,12 @@ void Display() {
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
 
     /* associate program with light */
-    GLint LightID = glGetUniformLocation(ShaderProgram, "LightVector");
+    GLint LightID = glGetUniformLocation(ShaderProgram, "LightPosition");
     if (LightID == -1) {
-        fprintf(stderr, "Could not bind uniform LightVector\n");
+        fprintf(stderr, "Could not bind uniform LightPosition\n");
         exit(-1);
     }
-    glUniform4fv(LightID, 1, value_ptr(light));
+    glUniform3fv(LightID, 1, value_ptr(LightPosition));
 
     ground->draw(ShaderProgram);
     carousel->draw(ShaderProgram);
@@ -353,9 +353,16 @@ void Initialize() {
     ProjectionMatrix = perspective(fovy, aspect, nearPlane, farPlane);
 
     /* Set viewing transform */
-    ViewMatrix = lookAt(vec3(0, cameraDispositionY, cameraDispositionX),    /* Eye vector */
+    ViewMatrix = lookAt(vec3(0, cameraDispositionY, cameraDispositionZ),    /* Eye vector */
                         vec3(0, 0, 0),     /* Viewing center */
                         vec3(0, 1, -1));  /* Up vector */
+
+    GLint CameraPositionId = glGetUniformLocation(ShaderProgram, "CameraPosition");
+    if (CameraPositionId == -1) {
+        fprintf(stderr, "Could not locate uniform CameraPosition");
+        exit(-1);
+    }
+    glUniform4fv(CameraPositionId, 1, value_ptr(vec4(0, cameraDispositionY, cameraDispositionZ, 1)));
 }
 
 

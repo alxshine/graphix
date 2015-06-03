@@ -98,5 +98,6 @@ void DrawObject::draw(GLuint ShaderProgram) {
     glDrawElements(GL_TRIANGLES, (GLsizei) (size / sizeof(GLushort)), GL_UNSIGNED_SHORT, 0);
 
     glDisableVertexAttribArray(vPosition);
+    glDisableVertexAttribArray(vNormal);
     glDisableVertexAttribArray(vColor);
 }
