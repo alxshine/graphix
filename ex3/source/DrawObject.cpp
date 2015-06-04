@@ -1,15 +1,13 @@
 #include "DrawObject.hpp"
-#include "OBJParser.h"
 
 using namespace glm;
 
-DrawObject::DrawObject(obj_scene_data *data, vec3 color) {
+DrawObject::DrawObject(const obj_scene_data *data, const vec4 material[]) {
     v_size = data->vertex_count;
     i_size = data->face_count;
     n_size = data->vertex_normal_count;
 
     vertices = (GLfloat *) calloc((size_t) (v_size * 3), sizeof(GLfloat));
-    colors = (GLfloat *) calloc((size_t) (v_size * 3), sizeof(GLfloat));
     normals = (GLfloat *) calloc((size_t) (n_size * 3), sizeof(GLfloat));
     indices = (GLushort *) calloc((size_t) (i_size * 3), sizeof(GLushort));
 
@@ -33,12 +31,7 @@ DrawObject::DrawObject(obj_scene_data *data, vec3 color) {
         indices[i * 3 + 2] = (GLushort) (*data->face_list[i]).vertex_index[2];
     }
 
-    //set up color buffer
-    for (int i = 0; i < v_size; i++) {
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
-    }
+    memcpy(Material, material, sizeof(Material));
 
     setupDataBuffers();
     InitialTransform = mat4(1);
@@ -57,20 +50,29 @@ void DrawObject::setupDataBuffers() {
     glGenBuffers(1, &ibo);
     glBindBuffer(GL_ARRAY_BUFFER, ibo);
     glBufferData(GL_ARRAY_BUFFER, i_size * 3 * sizeof(GLushort), indices, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &cbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cbo);
-    glBufferData(GL_ARRAY_BUFFER, v_size * 3 * sizeof(GLfloat), colors, GL_STATIC_DRAW);
 }
 
 DrawObject::~DrawObject() {
     delete vertices;
     delete normals;
     delete indices;
-    delete colors;
 }
 
 void DrawObject::draw(GLuint ShaderProgram) {
+    bindBuffers();
+
+    GLint size;
+    glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+
+    bindMatrices(ShaderProgram);
+    bindVectors(ShaderProgram);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei) (size / sizeof(GLushort)), GL_UNSIGNED_SHORT, 0);
+
+    unbindBuffers();
+}
+
+void DrawObject::bindBuffers() const {
     glEnableVertexAttribArray(vPosition);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -79,25 +81,42 @@ void DrawObject::draw(GLuint ShaderProgram) {
     glBindBuffer(GL_ARRAY_BUFFER, nbo);
     glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    glEnableVertexAttribArray(vColor);
-    glBindBuffer(GL_ARRAY_BUFFER, cbo);
-    glVertexAttribPointer(vColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+}
 
-    GLint size;
-    glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+void DrawObject::unbindBuffers() const {
+    glDisableVertexAttribArray(vPosition);
+    glDisableVertexAttribArray(vNormal);
+}
 
+void DrawObject::bindMatrices(GLuint ShaderProgram) const {
     GLint ModelMatrixID = glGetUniformLocation(ShaderProgram, "ModelMatrix");
     if (ModelMatrixID == -1) {
-        fprintf(stderr, "Could not bind uniform ModelMatrix");
+        fprintf(stderr, "Could not bind uniform ModelMatrix\n");
         exit(-1);
     }
     glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, value_ptr(DispositionMatrix * InitialTransform));
+}
 
-    glDrawElements(GL_TRIANGLES, (GLsizei) (size / sizeof(GLushort)), GL_UNSIGNED_SHORT, 0);
+void DrawObject::bindVectors(GLuint ShaderProgram) {
+//    GLint AmbientID = glGetUniformLocation(ShaderProgram, "ambient");
+//    if(AmbientID == -1){
+//        fprintf(stderr, "Could not bind ambient vector\n");
+//        exit(-1);
+//    }
+//    glUniform4fv(AmbientID, 1, value_ptr(Material[0]));
 
-    glDisableVertexAttribArray(vPosition);
-    glDisableVertexAttribArray(vNormal);
-    glDisableVertexAttribArray(vColor);
+    GLint DiffuseID = glGetUniformLocation(ShaderProgram, "diffuse");
+    if(DiffuseID == -1){
+        fprintf(stderr, "Could not bind diffuse vector\n");
+        exit(-1);
+    }
+    glUniform4fv(DiffuseID, 1, value_ptr(Material[1]));
+//
+//    GLint SpecularID = glGetUniformLocation(ShaderProgram, "specular");
+//    if(SpecularID == -1){
+//        fprintf(stderr, "Could not bind specular vector\n");
+//        exit(-1);
+//    }
+//    glUniform4fv(SpecularID, 1, value_ptr(Material[2]));
 }

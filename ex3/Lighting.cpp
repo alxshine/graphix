@@ -79,7 +79,7 @@ float yPhase = 0;
 float cameraDispositionZ = 20.f;
 float cameraDispositionY = 5.f;
 
-vec3 LightPosition = vec3(0, 2, -10);
+vec3 LightPosition = vec3(-0.4, 0.2, -2);
 
 /* Structures for loading of OBJ data */
 obj_scene_data data;
@@ -119,9 +119,9 @@ void Display() {
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
 
     /* associate program with light */
-    GLint LightID = glGetUniformLocation(ShaderProgram, "LightPosition");
+    GLint LightID = glGetUniformLocation(ShaderProgram, "LightDirection");
     if (LightID == -1) {
-        fprintf(stderr, "Could not bind uniform LightPosition\n");
+        fprintf(stderr, "Could not bind uniform LightDirection\n");
         exit(-1);
     }
     glUniform3fv(LightID, 1, value_ptr(LightPosition));
@@ -308,18 +308,35 @@ void CreateShaderProgram() {
 *******************************************************************/
 
 void Initialize() {
+    /* Set projection transform */
+    float fovy = (float) (45.0 * M_PI / 180.0);
+    float aspect = 1.0;
+    float nearPlane = 1.0;
+    float farPlane = 50.0;
+    ProjectionMatrix = perspective(fovy, aspect, nearPlane, farPlane);
+
+    /* Set viewing transform */
+    ViewMatrix = lookAt(vec3(0, cameraDispositionY, cameraDispositionZ),    /* Eye vector */
+                        vec3(0, 0, 0),     /* Viewing center */
+                        vec3(0, 1, -1));  /* Up vector */
+
     int success;
+
+    /* define materials */
+    vec4 carouselMaterial[3] = {vec4(0.4f, 0.1f, 0.65f, 1), vec4(0.4f, 0.1f, 0.65f, 1), vec4(1, 1, 1, 1)};
+    vec4 groundMaterial[3] = {vec4(0.2f, 0.8f, 0.8f, 1), vec4(0.2f, 0.8f, 0.8f, 1), vec4(1, 1, 1, 1)};
+    vec4 cupMaterial[3] = {vec4(0.4f, 0.5f, 0.1f, 1), vec4(0.4f, 0.5f, 0.1f, 1), vec4(1, 1, 1, 1)};
 
     /* Load Objects */
     success = parse_obj_scene(&data, "models/carousel.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
-    carousel = new DrawObject(&data, vec3(0.4, 0.1, 0.65));
+    carousel = new DrawObject(&data, carouselMaterial);
 
     success = parse_obj_scene(&data, "models/ground.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
-    ground = new DrawObject(&data, vec3(0.2, 0.1, 0.1));
+    ground = new DrawObject(&data, cupMaterial);
     ground->InitialTransform = translate(mat4(1), vec3(0, -3.5f, 0));
 
     success = parse_obj_scene(&data, "models/cup.obj");
@@ -327,7 +344,7 @@ void Initialize() {
         printf("Could not load file. Exiting.\n");
 
     for (int i = 0; i < 4; i++) {
-        cups[i] = new DrawObject(&data, vec3(0.2, 0.8, 0.8));
+        cups[i] = new DrawObject(&data, groundMaterial);
     }
 
     cups[0]->InitialTransform = translate(mat4(1), vec3(4, 0, 0));
@@ -345,24 +362,19 @@ void Initialize() {
     /* Setup shaders and shader program */
     CreateShaderProgram();
 
-    /* Set projection transform */
-    float fovy = (float) (45.0 * M_PI / 180.0);
-    float aspect = 1.0;
-    float nearPlane = 1.0;
-    float farPlane = 50.0;
-    ProjectionMatrix = perspective(fovy, aspect, nearPlane, farPlane);
+//    GLint CameraPositionId = glGetUniformLocation(ShaderProgram, "CameraPosition");
+//    if (CameraPositionId == -1) {
+//        fprintf(stderr, "Could not locate uniform CameraPosition");
+//        exit(-1);
+//    }
+//    glUniform4fv(CameraPositionId, 1, value_ptr(vec4(0, cameraDispositionY, cameraDispositionZ, 1)));
 
-    /* Set viewing transform */
-    ViewMatrix = lookAt(vec3(0, cameraDispositionY, cameraDispositionZ),    /* Eye vector */
-                        vec3(0, 0, 0),     /* Viewing center */
-                        vec3(0, 1, -1));  /* Up vector */
-
-    GLint CameraPositionId = glGetUniformLocation(ShaderProgram, "CameraPosition");
-    if (CameraPositionId == -1) {
-        fprintf(stderr, "Could not locate uniform CameraPosition");
+    GLint PVMatrixID = glGetUniformLocation(ShaderProgram, "ProjectionViewMatrix");
+    if(PVMatrixID == -1){
+        fprintf(stderr, "Could not locate uniform ProjectionViewMatrix\n");
         exit(-1);
     }
-    glUniform4fv(CameraPositionId, 1, value_ptr(vec4(0, cameraDispositionY, cameraDispositionZ, 1)));
+    glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix*ViewMatrix));
 }
 
 
