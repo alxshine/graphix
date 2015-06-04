@@ -178,6 +178,7 @@ void OnIdle() {
 
     /* Carousel turning */
     rotAngle = delta / 1200.f;
+    //rotAngle = 0.0;
     CarouselRotationMatrix = rotate(CarouselRotationMatrix, rotAngle, vec3(0, 1, 0));
     carousel->DispositionMatrix = CarouselRotationMatrix;
 

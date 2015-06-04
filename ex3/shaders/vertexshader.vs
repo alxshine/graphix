@@ -21,11 +21,11 @@ void main()
 	gl_Position = ProjectionViewMatrix*ModelMatrix*vec4(Position,1);
 
 	//convert normal vector to world space
-	vec3 n = normalize(ModelMatrix*vec4(Normal, 0)).xyz;
+	vec3 n = normalize(vec4(Normal, 0)).xyz;
 
 	//convert position to world space (lightPosition is already in world space)
 	vec4 p4 = (ModelMatrix*vec4(Position,1));
-	vec3 p = (p4/p4[3]).xyz;
+	vec3 p = (p4/p4.w).xyz;
 
 	//calculate vector from vertex to light (in world space)
 	vec3 l = normalize(LightPosition - p);
