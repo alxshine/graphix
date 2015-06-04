@@ -9,7 +9,6 @@ layout (location = 1) in vec3 Normal;
 
 uniform vec3 LightPosition;
 uniform vec3 CameraPosition;
-uniform vec3 LightDirection;
 
 uniform vec4 ambient;
 uniform vec4 diffuse;
@@ -19,11 +18,18 @@ out vec4 vColor;
 
 void main()
 {
-	vec3 n = normalize(ProjectionViewMatrix*ModelMatrix*vec4(Normal, 0)).xyz;
-	vec3 l = normalize(ProjectionViewMatrix*vec4(LightDirection,0)).xyz;
+	gl_Position = ProjectionViewMatrix*ModelMatrix*vec4(Position,1);
+
+	//convert normal vector to world space
+	vec3 n = normalize(ModelMatrix*vec4(Normal, 0)).xyz;
+
+	//convert position to world space (lightPosition is already in world space)
+	vec4 p4 = (ModelMatrix*vec4(Position,1));
+	vec3 p = (p4/p4[3]).xyz;
+
+	//calculate vector from vertex to light (in world space)
+	vec3 l = normalize(LightPosition - p);
 
 	float intensity = max(dot(n, l), 0);
 	vColor = diffuse*intensity;
-
-	gl_Position = ProjectionViewMatrix*ModelMatrix*vec4(Position,1);
 }

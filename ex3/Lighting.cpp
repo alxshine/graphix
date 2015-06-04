@@ -79,7 +79,7 @@ float yPhase = 0;
 float cameraDispositionZ = 20.f;
 float cameraDispositionY = 5.f;
 
-vec3 LightPosition = vec3(-0.4, 0.2, -2);
+vec3 LightPosition = vec3(5, 2, 5);
 
 /* Structures for loading of OBJ data */
 obj_scene_data data;
@@ -119,9 +119,9 @@ void Display() {
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
 
     /* associate program with light */
-    GLint LightID = glGetUniformLocation(ShaderProgram, "LightDirection");
+    GLint LightID = glGetUniformLocation(ShaderProgram, "LightPosition");
     if (LightID == -1) {
-        fprintf(stderr, "Could not bind uniform LightDirection\n");
+        fprintf(stderr, "Could not bind uniform LightPosition\n");
         exit(-1);
     }
     glUniform3fv(LightID, 1, value_ptr(LightPosition));
