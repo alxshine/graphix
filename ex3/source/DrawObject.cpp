@@ -99,12 +99,12 @@ void DrawObject::bindMatrices(GLuint ShaderProgram) const {
 }
 
 void DrawObject::bindVectors(GLuint ShaderProgram) {
-//    GLint AmbientID = glGetUniformLocation(ShaderProgram, "ambient");
-//    if(AmbientID == -1){
-//        fprintf(stderr, "Could not bind ambient vector\n");
-//        exit(-1);
-//    }
-//    glUniform4fv(AmbientID, 1, value_ptr(Material[0]));
+    GLint AmbientID = glGetUniformLocation(ShaderProgram, "ambient");
+    if(AmbientID == -1){
+        fprintf(stderr, "Could not bind ambient vector\n");
+        exit(-1);
+    }
+    glUniform4fv(AmbientID, 1, value_ptr(Material[0]));
 
     GLint DiffuseID = glGetUniformLocation(ShaderProgram, "diffuse");
     if(DiffuseID == -1){
@@ -112,11 +112,11 @@ void DrawObject::bindVectors(GLuint ShaderProgram) {
         exit(-1);
     }
     glUniform4fv(DiffuseID, 1, value_ptr(Material[1]));
-//
-//    GLint SpecularID = glGetUniformLocation(ShaderProgram, "specular");
-//    if(SpecularID == -1){
-//        fprintf(stderr, "Could not bind specular vector\n");
-//        exit(-1);
-//    }
-//    glUniform4fv(SpecularID, 1, value_ptr(Material[2]));
+
+    GLint SpecularID = glGetUniformLocation(ShaderProgram, "specular");
+    if(SpecularID == -1){
+        fprintf(stderr, "Could not bind specular vector\n");
+        exit(-1);
+    }
+    glUniform4fv(SpecularID, 1, value_ptr(Material[2]));
 }

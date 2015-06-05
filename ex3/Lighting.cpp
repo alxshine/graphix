@@ -49,7 +49,7 @@ using namespace glm;
 /*----------------------------------------------------------------*/
 
 
-DrawObject *carousel, *ground = 0;
+DrawObject *carousel = 0, *ground = 0, *back = 0;
 DrawObject *cups[4] = {0, 0, 0, 0};
 
 /* Strings for loading and storing shader code */
@@ -79,7 +79,14 @@ float yPhase = 0;
 float cameraDispositionZ = 20.f;
 float cameraDispositionY = 5.f;
 
-vec3 LightPosition = vec3(5, 2, 5);
+vec3 lightPosition1 = vec3(5, 2, 5);
+vec4 lightIntensity1 = vec4(0.5, 0.5, 0.5, 1);
+
+vec4 initialLightPosition2 = vec4(5, 2, 5, 1);
+mat4 lightMatrix2 = mat4(1);
+vec4 lightIntensity2 = vec4(0.5, 0.5, 0.5, 1);
+DrawObject *light2 = 0;
+
 
 /* Structures for loading of OBJ data */
 obj_scene_data data;
@@ -119,17 +126,42 @@ void Display() {
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
 
     /* associate program with light */
-    GLint LightID = glGetUniformLocation(ShaderProgram, "LightPosition");
-    if (LightID == -1) {
-        fprintf(stderr, "Could not bind uniform LightPosition\n");
+    //light 1 (immobile, changable colors)
+    GLint lP1ID = glGetUniformLocation(ShaderProgram, "lP1");
+    if (lP1ID == -1) {
+        fprintf(stderr, "Could not bind uniform lightPosition1 1\n");
         exit(-1);
     }
-    glUniform3fv(LightID, 1, value_ptr(LightPosition));
+    glUniform3fv(lP1ID, 1, value_ptr(lightPosition1));
+    GLint lI1ID = glGetUniformLocation(ShaderProgram, "lI1");
+    if (lI1ID == -1) {
+        fprintf(stderr, "Could not bind uniform lightIntensity 1\n");
+        exit(-1);
+    }
+    glUniform4fv(lI1ID, 1, value_ptr(lightIntensity1));
+
+    //light 2 (mobile, fixed color)
+    vec4 currentLightPosition2 = lightMatrix2 * initialLightPosition2;
+    vec3 lP2 = vec3(currentLightPosition2.x, currentLightPosition2.y, currentLightPosition2.z);
+    GLint lP2ID = glGetUniformLocation(ShaderProgram, "lP2");
+    if (lP2ID == -1) {
+        fprintf(stderr, "Could not bind uniform lightPosition 2\n");
+        exit(-1);
+    }
+    glUniform3fv(lP2ID, 1, value_ptr(lP2));
+
+    GLint lI2ID = glGetUniformLocation(ShaderProgram, "lI2");
+    if (lI2ID == -1) {
+        fprintf(stderr, "Could not bind uniform lightIntenstity 2\n");
+        exit(-1);
+    }
+    glUniform4fv(lI2ID, 1, value_ptr(lightIntensity2));
 
     ground->draw(ShaderProgram);
     carousel->draw(ShaderProgram);
     for (int i = 0; i < 4; i++)
         cups[i]->draw(ShaderProgram);
+    light2->draw(ShaderProgram);
 
     /* Swap between front and back buffer */
     glutSwapBuffers();
@@ -151,6 +183,23 @@ void Display() {
  * e and q rotate around z 
  */
 void Keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+        case 'r':
+        case '1':
+            lightIntensity1[0] = !lightIntensity1[0];
+            break;
+        case 'g':
+        case '2':
+            lightIntensity1[1] = !lightIntensity1[1];
+            break;
+        case 'b':
+        case '3':
+            lightIntensity1[2] = !lightIntensity1[2];
+            break;
+        default:
+            break;
+    }
+
     glutPostRedisplay();
 }
 
@@ -178,7 +227,7 @@ void OnIdle() {
 
     /* Carousel turning */
     rotAngle = delta / 1200.f;
-    //rotAngle = 0.0;
+//    rotAngle = 0.0;
     CarouselRotationMatrix = rotate(CarouselRotationMatrix, rotAngle, vec3(0, 1, 0));
     carousel->DispositionMatrix = CarouselRotationMatrix;
 
@@ -196,6 +245,9 @@ void OnIdle() {
             cups[i]->DispositionMatrix = TranslationMatrixDown * CarouselRotationMatrix;
         }
     }
+
+    lightMatrix2 = CarouselRotationMatrix;
+    light2->DispositionMatrix = CarouselRotationMatrix;
 
 
     /* Issue display refresh */
@@ -325,33 +377,44 @@ void Initialize() {
 
     /* define materials */
     vec4 carouselMaterial[3] = {vec4(0.4f, 0.1f, 0.65f, 1), vec4(0.4f, 0.1f, 0.65f, 1), vec4(1, 1, 1, 1)};
-    vec4 groundMaterial[3] = {vec4(0.2f, 0.8f, 0.8f, 1), vec4(0.2f, 0.8f, 0.8f, 1), vec4(1, 1, 1, 1)};
+    vec4 groundMaterial[3] = {vec4(0.6f, 0.4f, 0.3f, 1), vec4(0.6f, 0.4f, 0.3f, 1), vec4(1, 1, 1, 1)};
     vec4 cupMaterial[3] = {vec4(0.4f, 0.5f, 0.1f, 1), vec4(0.4f, 0.5f, 0.1f, 1), vec4(1, 1, 1, 1)};
 
     /* Load Objects */
-    success = parse_obj_scene(&data, "models/carousel.obj");
+    success = parse_obj_scene(&data, (char *) "models/carousel.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
     carousel = new DrawObject(&data, carouselMaterial);
 
-    success = parse_obj_scene(&data, "models/ground.obj");
+    success = parse_obj_scene(&data, (char *) "models/ground.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
-    ground = new DrawObject(&data, cupMaterial);
+    ground = new DrawObject(&data, groundMaterial);
     ground->InitialTransform = translate(mat4(1), vec3(0, -3.5f, 0));
 
-    success = parse_obj_scene(&data, "models/cup.obj");
+    success = parse_obj_scene(&data, (char *) "models/cup.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
 
     for (int i = 0; i < 4; i++) {
-        cups[i] = new DrawObject(&data, groundMaterial);
+        cups[i] = new DrawObject(&data, cupMaterial);
     }
 
     cups[0]->InitialTransform = translate(mat4(1), vec3(4, 0, 0));
     cups[1]->InitialTransform = translate(mat4(1), vec3(-4, 0, 0));
     cups[2]->InitialTransform = translate(mat4(1), vec3(0, 0, 4));
     cups[3]->InitialTransform = translate(mat4(1), vec3(0, 0, -4));
+
+    //set light visualization
+    success = parse_obj_scene(&data, (char *) "models/sphere.obj");
+    if (!success) {
+        printf("Could not load file. Exiting\n");
+        exit(-1);
+    }
+    vec4 lightMaterial[3] = {vec4(1, 1, 1, 1), vec4(1, 1, 1, 1), vec4(1, 1, 1, 1)};
+    light2 = new DrawObject(&data, lightMaterial);
+    light2->InitialTransform = translate(mat4(1), vec3(initialLightPosition2.x, initialLightPosition2.y,
+                                                       initialLightPosition2.z));
 
     /* Set background (clear) color to Black */
     glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -363,19 +426,19 @@ void Initialize() {
     /* Setup shaders and shader program */
     CreateShaderProgram();
 
-//    GLint CameraPositionId = glGetUniformLocation(ShaderProgram, "CameraPosition");
-//    if (CameraPositionId == -1) {
-//        fprintf(stderr, "Could not locate uniform CameraPosition");
-//        exit(-1);
-//    }
-//    glUniform4fv(CameraPositionId, 1, value_ptr(vec4(0, cameraDispositionY, cameraDispositionZ, 1)));
+    GLint cPID = glGetUniformLocation(ShaderProgram, "cP");
+    if (cPID == -1) {
+        fprintf(stderr, "Could not locate uniform CameraPosition");
+        exit(-1);
+    }
+    glUniform4fv(cPID, 1, value_ptr(vec4(0, cameraDispositionY, cameraDispositionZ, 1)));
 
     GLint PVMatrixID = glGetUniformLocation(ShaderProgram, "ProjectionViewMatrix");
-    if(PVMatrixID == -1){
+    if (PVMatrixID == -1) {
         fprintf(stderr, "Could not locate uniform ProjectionViewMatrix\n");
         exit(-1);
     }
-    glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix*ViewMatrix));
+    glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
 }
 
 
@@ -409,7 +472,7 @@ int main(int argc, char **argv) {
      * handing control over to GLUT */
     glutIdleFunc(OnIdle);
     glutDisplayFunc(Display);
-//    glutKeyboardFunc(Keyboard);
+    glutKeyboardFunc(Keyboard);
 //    glutKeyboardUpFunc(KeyUp);
 
     glutMainLoop();
