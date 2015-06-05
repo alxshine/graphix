@@ -82,10 +82,13 @@ float cameraDispositionY = 5.f;
 vec3 lightPosition1 = vec3(5, 2, 5);
 vec4 lightIntensity1 = vec4(0.5, 0.5, 0.5, 1);
 
-vec4 initialLightPosition2 = vec4(5, 2, 5, 1);
+vec4 initialLightPosition2 = vec4(2, 2, 5, 1);
 mat4 lightMatrix2 = mat4(1);
 vec4 lightIntensity2 = vec4(0.5, 0.5, 0.5, 1);
 DrawObject *light2 = 0;
+
+//ambient diffuse and specular terms for turning them on and off;
+float ambient = 1, diffuse = 1, specular = 1;
 
 
 /* Structures for loading of OBJ data */
@@ -157,6 +160,30 @@ void Display() {
     }
     glUniform4fv(lI2ID, 1, value_ptr(lightIntensity2));
 
+    //lighting components
+    GLint ambientID = glGetUniformLocation(ShaderProgram, "showAmbient");
+    if (ambientID == -1) {
+        fprintf(stderr, "Could not bind uniform showAmbient\n");
+        exit(-1);
+    }
+    glUniform1f(ambientID, ambient);
+
+    GLint diffuseID = glGetUniformLocation(ShaderProgram, "showDiffuse");
+    if (diffuseID == -1) {
+        fprintf(stderr, "Could not bind uniform showDiffuse\n");
+        exit(-1);
+    }
+    glUniform1f(diffuseID, diffuse);
+
+    GLint specularID = glGetUniformLocation(ShaderProgram, "showSpecular");
+    if (specularID == -1) {
+        fprintf(stderr, "Could not bind uniform showSpecular\n");
+        exit(-1);
+    }
+    glUniform1f(specularID, specular);
+
+
+    /* Draw objects */
     ground->draw(ShaderProgram);
     carousel->draw(ShaderProgram);
     for (int i = 0; i < 4; i++)
@@ -195,6 +222,17 @@ void Keyboard(unsigned char key, int x, int y) {
         case 'b':
         case '3':
             lightIntensity1[2] = !lightIntensity1[2];
+            break;
+        case 'c':
+            exit(0);
+        case 'a':
+            ambient = !ambient;
+            break;
+        case 'd':
+            diffuse = !diffuse;
+            break;
+        case 's':
+            specular = !diffuse;
             break;
         default:
             break;

@@ -19,6 +19,11 @@ uniform vec4 ambient;
 uniform vec4 diffuse;
 uniform vec4 specular;
 
+//factors for turning the lighting components on and off
+uniform float showAmbient;
+uniform float showDiffuse;
+uniform float showSpecular;
+
 out vec4 vColor;
 
 void main()
@@ -37,8 +42,8 @@ void main()
 	vec3 l2 = normalize(lP2 - p);
 
 	//diffuse reflection
-	float iDiffuse1 = max(dot(n, l1), 0);
-	float iDiffuse2 = max(dot(n, l2), 0);
+	float iDiffuse1 = showDiffuse*max(dot(n, l1), 0);
+	float iDiffuse2 = showDiffuse*max(dot(n, l2), 0);
 
 	//prepare vectors for specular reflection
 	vec3 r1 = normalize((2*n*dot(n,l1))-l1);
@@ -47,14 +52,14 @@ void main()
 	vec3 v = normalize(cP - p);
 	float m = 10;
 
-	float iSpecular1 = max(pow(dot(r1, v), m), 0);
-	float iSpecular2 = max(pow(dot(r2, v), m), 0);
+	float iSpecular1 = showSpecular*max(pow(dot(r1, v), m), 0);
+	float iSpecular2 = showSpecular*max(pow(dot(r2, v), m), 0);
 
 	//light model coefficients
-	float kA = 0.2;
+	float kA = 0.1;
 	float kD = 0.5;
-	float kS = 0.1;
+	float kS = 0.2;
 
 	//full color calculation
-	vColor = kA*ambient + lI1 * (kD*iDiffuse1*diffuse + kS*iSpecular1*specular) + lI2 * (kD*iDiffuse2*diffuse + kS*iSpecular2*specular);
+	vColor = showAmbient*kA*ambient + lI1 * (kD*iDiffuse1*diffuse + kS*iSpecular1*specular) + lI2 * (kD*iDiffuse2*diffuse + kS*iSpecular2*specular);
 }

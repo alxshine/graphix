@@ -24,7 +24,7 @@ private:
     void bindMatrices(GLuint ShaderProgram) const;
 
 public:
-    GLuint vbo, nbo, ibo, mbo;
+    GLuint vbo, nbo, ibo;
 
     GLfloat *vertices, *normals;
     GLushort *indices;

@@ -1,8 +1,8 @@
 CC = g++
 LD = g++
 
-OBJ = Interaction.o DrawObject.o LoadShader.o Matrix.o StringExtra.o OBJParser.o List.o
-TARGET = Interaction
+OBJ = Lighting.o DrawObject.o LoadShader.o Matrix.o StringExtra.o OBJParser.o List.o
+TARGET = Lighting
 
 CFLAGS = -g -Wall 
 LDLIBS = -lm -lglut -lGLEW -lGL
@@ -15,7 +15,7 @@ VPATH = source
 # Rules
 all: $(TARGET)
 
-$(TARGET).o: $(TARGET).c
+$(TARGET).o: $(TARGET).cpp
 	$(CC) $(CFLAGS) $(INCLUDES) -c $^ -o $@
 
 $(BUILD_DIR)/%.o: %.c
