@@ -40,6 +40,7 @@
 extern "C" {
 #include "source/LoadShader.h"    /* Loading function for shader code */
 #include "source/OBJParser.h"     /* Loading function for triangle meshes in OBJ format */
+#include "source/LoadTexture.h"
 };
 
 #include "source/DrawObject.hpp"
@@ -94,13 +95,14 @@ float ambient = 1, diffuse = 1, specular = 1;
 /* Structures for loading of OBJ data */
 obj_scene_data data;
 
+/* Texture */
+
+TextureData *Texture;
+GLuint TextureID;
+GLint TextureUniform;
+
 /* Reference time for animation */
 int oldTime = 0;
-
-
-/*----------------------------------------------------------------*/
-
-
 
 /******************************************************************
 *
@@ -108,7 +110,7 @@ int oldTime = 0;
 *
 * This function is called when the content of the window needs to be
 * drawn/redrawn. It has been specified through 'glutDisplayFunc()';
-* Enable vertex attributes, create binding between C program and 
+* Enable vertex attributes, create binding between C program and
 * attribute name in shader, provide data for uniform variables
 *
 *******************************************************************/
@@ -116,6 +118,22 @@ int oldTime = 0;
 void Display() {
     /* Clear window; color specified in 'Initialize()' */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    /* Activate first (and only) texture unit */
+    glActiveTexture(GL_TEXTURE0);
+
+    /* Bind current texture  */
+    glBindTexture(GL_TEXTURE_2D, TextureID);
+
+    /* Get texture uniform handle from fragment shader */
+//    TextureUniform = glGetUniformLocation(ShaderProgram, "textureSampler");
+//    if(TextureUniform == -1){
+//        fprintf(stderr, "Could not bind uniform textureSampler");
+//        exit(-1);
+//    }
+
+    /* Set location of uniform sampler variable */
+    glUniform1i(TextureUniform, 0);
 
     GLint size;
     glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
@@ -386,6 +404,49 @@ void CreateShaderProgram() {
     glUseProgram(ShaderProgram);
 }
 
+void SetupTexture() {
+    /* Allocate texture container */
+    Texture = (TextureData *) malloc(sizeof(TextureData *));
+
+    int success = LoadTexture("data/uvtemplate.bmp", Texture);
+    if (!success) {
+        printf("Error loading texture. Exiting.\n");
+        exit(-1);
+    }
+
+    /* Create texture name and store in handle */
+    glGenTextures(1, &TextureID);
+
+    /* Bind texture */
+    glBindTexture(GL_TEXTURE_2D, TextureID);
+
+    /* Load texture image into memory */
+    glTexImage2D(GL_TEXTURE_2D,     /* Target texture */
+                 0,                 /* Base level */
+                 GL_RGB,            /* Each element is RGB triple */
+                 Texture->width,    /* Texture dimensions */
+                 Texture->height,
+                 0,                 /* Border should be zero */
+                 GL_BGR,            /* Data storage format for BMP file */
+                 GL_UNSIGNED_BYTE,  /* Type of pixel data, one byte per channel */
+                 Texture->data);    /* Pointer to image data  */
+
+    /* Next set up texturing parameters */
+
+    /* Repeat texture on edges when tiling */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    /* Linear interpolation for magnification */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    /* Trilinear MIP mapping for minification */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    /* Note: MIP mapping not visible due to fixed, i.e. static camera */
+}
+
 
 /******************************************************************
 *
@@ -430,7 +491,7 @@ void Initialize() {
     ground = new DrawObject(&data, groundMaterial);
     ground->InitialTransform = translate(mat4(1), vec3(0, -3.5f, 0));
 
-    success = parse_obj_scene(&data, (char *) "models/cup.obj");
+    success = parse_obj_scene(&data, (char *) "models/capsule.obj");
     if (!success)
         printf("Could not load file. Exiting.\n");
 
@@ -476,6 +537,9 @@ void Initialize() {
         exit(-1);
     }
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
+
+    /* set up texture */
+    SetupTexture();
 }
 
 

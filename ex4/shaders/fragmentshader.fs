@@ -1,5 +1,8 @@
 #version 330
 
+//texture
+uniform sampler2D textureSampler;
+
 //colors
 uniform vec4 ambient;
 uniform vec4 diffuse;
@@ -18,6 +21,7 @@ in vec3 vLight1;
 in vec3 vLight2;
 in vec3 vNormal;
 in vec3 vView;
+in vec2 UVcoords;
 
 out vec4 FragColor;
 
@@ -43,6 +47,16 @@ void main()
 	float iD1 = clamp(kD * dot(n, l1), 0, 1);
 	float iD2 = clamp(kD * dot(n, l2), 0, 1);
 
-	FragColor = showAmbient * kA * ambient + lI1 * (showDiffuse * iD1 * diffuse + showSpecular * iS1 * specular)
-		+ lI2 * (showDiffuse * iD2 * diffuse + showSpecular * iS2 * specular);
+	vec4 cAmbient = ambient;
+	vec4 cDiffuse = diffuse;
+	vec4 cSpecular = specular;
+
+	if(cAmbient == vec4(0)){
+		cAmbient = texture2D(textureSampler, UVcoords);
+		cDiffuse = texture2D(textureSampler, UVcoords);
+		cSpecular = vec4(1);
+	}
+
+	FragColor = showAmbient * kA * cAmbient + lI1 * (showDiffuse * iD1 * cDiffuse + showSpecular * iS1 * cSpecular)
+		+ lI2 * (showDiffuse * iD2 * cDiffuse + showSpecular * iS2 * cSpecular);
 }

@@ -14,6 +14,8 @@ set(SOURCE_FILES
     source/OBJParser.h
     source/StringExtra.c
     source/StringExtra.h
+    source/LoadTexture.c
+    source/LoadTexture.h
     Lighting.cpp)
 
 add_executable(ex4 ${SOURCE_FILES})

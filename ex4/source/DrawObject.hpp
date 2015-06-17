@@ -24,15 +24,15 @@ private:
     void bindMatrices(GLuint ShaderProgram) const;
 
 public:
-    GLuint vbo, nbo, ibo;
+    GLuint vbo, nbo, ibo, uvbo;
 
-    GLfloat *vertices, *normals;
+    GLfloat *vertices, *normals, *uvs;
     GLushort *indices;
-    int v_size, i_size, n_size;
+    int v_size, i_size, n_size, uv_size;
     mat4 InitialTransform, DispositionMatrix;
 
     enum DataID {
-        vPosition = 0, vNormal = 2
+        vPosition = 0, vNormal = 2, vUV = 3
     };
 
     DrawObject(const obj_scene_data *data, const vec4 Material[]);

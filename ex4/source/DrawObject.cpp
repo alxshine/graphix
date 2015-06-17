@@ -1,4 +1,5 @@
 #include "DrawObject.hpp"
+#include "OBJParser.h"
 
 using namespace glm;
 
@@ -6,10 +7,12 @@ DrawObject::DrawObject(const obj_scene_data *data, const vec4 material[]) {
     v_size = data->vertex_count;
     i_size = data->face_count;
     n_size = data->vertex_normal_count;
+    uv_size = data->vertex_texture_count;
 
     vertices = (GLfloat *) calloc((size_t) (v_size * 3), sizeof(GLfloat));
     normals = (GLfloat *) calloc((size_t) (n_size * 3), sizeof(GLfloat));
     indices = (GLushort *) calloc((size_t) (i_size * 3), sizeof(GLushort));
+    uvs = (GLfloat *) calloc((size_t) (uv_size * 2), sizeof(GLfloat));
 
     //copy vertices
     for (int i = 0; i < v_size; i++) {
@@ -31,7 +34,14 @@ DrawObject::DrawObject(const obj_scene_data *data, const vec4 material[]) {
         indices[i * 3 + 2] = (GLushort) (*data->face_list[i]).vertex_index[2];
     }
 
-    memcpy(Material, material, sizeof(Material));
+    //copy uv coordinates
+    for (int i = 0; i < uv_size; i++) {
+        uvs[i * 2] = (GLushort) (*data->vertex_texture_list[i]).e[0];
+        uvs[i * 2 + 1] = (GLushort) (*data->vertex_texture_list[i]).e[1];
+    }
+
+    if (uv_size == 0)
+        memcpy(Material, material, sizeof(Material));
 
     setupDataBuffers();
     InitialTransform = mat4(1);
@@ -50,12 +60,17 @@ void DrawObject::setupDataBuffers() {
     glGenBuffers(1, &ibo);
     glBindBuffer(GL_ARRAY_BUFFER, ibo);
     glBufferData(GL_ARRAY_BUFFER, i_size * 3 * sizeof(GLushort), indices, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &uvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbo);
+    glBufferData(GL_ARRAY_BUFFER, uv_size * 2 * sizeof(GLfloat), uvs, GL_STATIC_DRAW);
 }
 
 DrawObject::~DrawObject() {
     delete vertices;
     delete normals;
     delete indices;
+    delete uvs;
 }
 
 void DrawObject::draw(GLuint ShaderProgram) {
@@ -81,12 +96,21 @@ void DrawObject::bindBuffers() const {
     glBindBuffer(GL_ARRAY_BUFFER, nbo);
     glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+    if (uv_size > 0) {
+        glEnableVertexAttribArray(vUV);
+        glBindBuffer(GL_ARRAY_BUFFER, uvbo);
+        glVertexAttribPointer(vUV, 2, GL_FLOAT, GL_TRUE, 0, 0);
+    }
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 }
 
 void DrawObject::unbindBuffers() const {
     glDisableVertexAttribArray(vPosition);
     glDisableVertexAttribArray(vNormal);
+
+    if (uv_size > 0)
+        glDisableVertexAttribArray(vUV);
 }
 
 void DrawObject::bindMatrices(GLuint ShaderProgram) const {
@@ -100,23 +124,30 @@ void DrawObject::bindMatrices(GLuint ShaderProgram) const {
 
 void DrawObject::bindVectors(GLuint ShaderProgram) {
     GLint AmbientID = glGetUniformLocation(ShaderProgram, "ambient");
-    if(AmbientID == -1){
+    if (AmbientID == -1) {
         fprintf(stderr, "Could not bind ambient vector\n");
         exit(-1);
     }
-    glUniform4fv(AmbientID, 1, value_ptr(Material[0]));
 
     GLint DiffuseID = glGetUniformLocation(ShaderProgram, "diffuse");
-    if(DiffuseID == -1){
+    if (DiffuseID == -1) {
         fprintf(stderr, "Could not bind diffuse vector\n");
         exit(-1);
     }
-    glUniform4fv(DiffuseID, 1, value_ptr(Material[1]));
 
     GLint SpecularID = glGetUniformLocation(ShaderProgram, "specular");
-    if(SpecularID == -1){
+    if (SpecularID == -1) {
         fprintf(stderr, "Could not bind specular vector\n");
         exit(-1);
     }
-    glUniform4fv(SpecularID, 1, value_ptr(Material[2]));
+
+    if (uv_size == 0) {
+        glUniform4fv(AmbientID, 1, value_ptr(Material[0]));
+        glUniform4fv(DiffuseID, 1, value_ptr(Material[1]));
+        glUniform4fv(SpecularID, 1, value_ptr(Material[2]));
+    } else {
+        glUniform4fv(AmbientID, 1, value_ptr(vec4(0)));
+        glUniform4fv(DiffuseID, 1, value_ptr(vec4(0)));
+        glUniform4fv(SpecularID, 1, value_ptr(vec4(0)));
+    }
 }
