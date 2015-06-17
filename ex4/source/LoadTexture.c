@@ -102,7 +102,7 @@ int LoadTexture(const char* filename, TextureData *texture)
         dataPos = 54; 
 
     /* Allocate memory for RGB data */
-    texture->data = malloc(sizeof(unsigned char) * (imageSize+1));
+    texture->data = (unsigned char *) malloc(sizeof(unsigned char) * (imageSize+1));
 
     /* Read data from file */
     fread(texture->data, 1, imageSize, file);

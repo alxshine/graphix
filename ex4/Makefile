@@ -1,7 +1,7 @@
 CC = g++
 LD = g++
 
-OBJ = Lighting.o DrawObject.o LoadShader.o Matrix.o StringExtra.o OBJParser.o List.o
+OBJ = Lighting.o DrawObject.o LoadShader.o StringExtra.o OBJParser.o List.o LoadTexture.o
 TARGET = Lighting
 
 CFLAGS = -g -Wall 
@@ -30,7 +30,7 @@ clean:
 .PHONY: clean
 
 # Dependencies
-$(TARGET): $(BUILD_DIR)/LoadShader.o $(BUILD_DIR)/Matrix.o $(BUILD_DIR)/StringExtra.o $(BUILD_DIR)/DrawObject.o $(BUILD_DIR)/OBJParser.o  $(BUILD_DIR)/List.o | $(BUILD_DIR)
+$(TARGET): $(BUILD_DIR)/LoadShader.o $(BUILD_DIR)/StringExtra.o $(BUILD_DIR)/LoadTexture.o $(BUILD_DIR)/DrawObject.o $(BUILD_DIR)/OBJParser.o  $(BUILD_DIR)/List.o | $(BUILD_DIR)
 
 
 

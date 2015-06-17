@@ -37,11 +37,11 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 /* Local includes */
-extern "C" {
+//extern "C" {
 #include "source/LoadShader.h"    /* Loading function for shader code */
 #include "source/OBJParser.h"     /* Loading function for triangle meshes in OBJ format */
 #include "source/LoadTexture.h"
-};
+//};
 
 #include "source/DrawObject.hpp"
 
