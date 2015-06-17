@@ -28,7 +28,7 @@ void main()
 
 	//convert position to world space (lP1 is already in world space)
 	vec4 p4 = (ModelMatrix*vec4(Position,1));
-	vec3 p = (p4/p4.w).xyz;
+	vec3 p = vec3(p4);
 
 	//calculate vector from vertex to light (in world space)
 	vLight1 = normalize(lP1 - p);

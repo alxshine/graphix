@@ -451,8 +451,7 @@ void Initialize() {
     }
     vec4 lightMaterial[3] = {vec4(1, 1, 1, 1), vec4(1, 1, 1, 1), vec4(1, 1, 1, 1)};
     light2 = new DrawObject(&data, lightMaterial);
-    light2->InitialTransform = translate(mat4(1), vec3(initialLightPosition2.x, initialLightPosition2.y,
-                                                       initialLightPosition2.z));
+    light2->InitialTransform = translate(mat4(1), vec3(initialLightPosition2));
 
     /* Set background (clear) color to Black */
     glClearColor(0.0, 0.0, 0.0, 0.0);

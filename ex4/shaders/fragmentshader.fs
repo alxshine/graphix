@@ -27,7 +27,7 @@ void main()
 	float kA = 0.1;
 	float kD = 0.5;
 	float kS = 0.2;
-	float m = 10;
+	float m = 8;
 
 	//normalize all vectors
 	vec3 l1 = normalize(vLight1);
@@ -36,13 +36,13 @@ void main()
 	vec3 v = normalize(vView);
 
 	vec3 r1 = normalize((2*n*dot(n, l1)) - l1);
-	float iS1 = max(kS * pow(dot(r1,v), m), 1);
+	float iS1 = clamp(kS * pow(dot(r1, v), m), 0, 1);
 	vec3 r2 = normalize((2*n*dot(n, l2)) - l2);
-	float iS2 = max(kS * pow(dot(r2,v), m), 1);
+	float iS2 = clamp(kS * pow(dot(r2, v), m), 0, 1);
 
-	float iD1 = max(kD * dot(n,l1), 1);
-	float iD2 = max(kD * dot(n, l2), 1);
+	float iD1 = clamp(kD * dot(n, l1), 0, 1);
+	float iD2 = clamp(kD * dot(n, l2), 0, 1);
 
-	FragColor = showAmbient * kA * ambient + lI1 * (showDiffuse * kD * iD1 * diffuse + showSpecular * kS * iS1 * specular)
-		+ lI2 * (showDiffuse * kD * iD2 * diffuse + showSpecular * kS * iS2 * specular);
+	FragColor = showAmbient * kA * ambient + lI1 * (showDiffuse * iD1 * diffuse + showSpecular * iS1 * specular)
+		+ lI2 * (showDiffuse * iD2 * diffuse + showSpecular * iS2 * specular);
 }
