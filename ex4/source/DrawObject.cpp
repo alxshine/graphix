@@ -87,6 +87,19 @@ void DrawObject::draw(GLuint ShaderProgram) {
     unbindBuffers();
 }
 
+void DrawObject::draw2(GLuint ShaderProgram) {
+    bindBuffers();
+
+    GLint size;
+    glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+
+    bindMatrices(ShaderProgram);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei) (size / sizeof(GLushort)), GL_UNSIGNED_SHORT, 0);
+
+    unbindBuffers();
+}
+
 void DrawObject::bindBuffers() const {
     glEnableVertexAttribArray(vPosition);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);

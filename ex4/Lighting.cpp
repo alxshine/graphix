@@ -37,11 +37,11 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 /* Local includes */
-//extern "C" {
+extern "C" {
 #include "source/LoadShader.h"    /* Loading function for shader code */
 #include "source/OBJParser.h"     /* Loading function for triangle meshes in OBJ format */
 #include "source/LoadTexture.h"
-//};
+};
 
 #include "source/DrawObject.hpp"
 
@@ -59,6 +59,8 @@ static const char *FragmentShaderString;
 
 GLuint ShaderProgram;
 
+GLuint LightShader;
+
 
 /* Matrices for uniform variables in vertex shader */
 /* Perspective projection matrix */
@@ -71,6 +73,16 @@ mat4 ViewMatrix;
 mat4 TranslationMatrixUp;
 mat4 TranslationMatrixDown;
 mat4 CarouselRotationMatrix;
+
+
+mat4 light_view_matrix;
+mat4 light_projection_matrix;
+
+mat4 scale_bias_matrix =
+        mat4(vec4(0.5f, 0.0f, 0.0f, 0.0f),
+             vec4(0.0f, 0.5f, 0.0f, 0.0f),
+             vec4(0.0f, 0.0f, 0.5f, 0.0f),
+             vec4(0.5f, 0.5f, 0.5f, 1.0f));
 
 /* Variables for storing current rotation angles */
 float rotAngle = 0.0f;
@@ -104,6 +116,52 @@ GLint TextureUniform;
 /* Reference time for animation */
 int oldTime = 0;
 
+GLuint depth_texture;
+GLint depth_uniform;
+
+GLsizei texture_size = 1024;
+
+GLuint depth_fbo;
+
+
+void DrawShadowMap(void)
+{
+    light_view_matrix = glm::lookAt(lightPosition1, vec3(0.0f), vec3(0,1,0));
+    light_projection_matrix = glm::frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 50.0f);
+    glUseProgram(LightShader);
+
+    GLint VP_matrix = glGetUniformLocation(LightShader, "VP_matrix");
+    if (VP_matrix == -1) {
+        fprintf(stderr, "Could not bind uniform MVP_matrix\n");
+        exit(-1);
+    }
+
+    glUniformMatrix4fv(VP_matrix, 1, GL_FALSE, glm::value_ptr(
+            light_projection_matrix * light_view_matrix) );
+
+    glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
+    glViewport(0, 0, texture_size, texture_size);
+    glClearDepth(1.0f
+    );
+
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(2.0f, 4.0f);
+
+    /* Draw objects */
+    ground->draw(ShaderProgram);
+    carousel->draw(ShaderProgram);
+    for (int i = 0; i < 4; i++)
+        cups[i]->draw(ShaderProgram);
+    light2->draw(ShaderProgram);
+
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, 600, 600);
+
+    glUseProgram(ShaderProgram);
+}
+
 /******************************************************************
 *
 * Display
@@ -116,24 +174,42 @@ int oldTime = 0;
 *******************************************************************/
 
 void Display() {
+
+    DrawShadowMap();
+
     /* Clear window; color specified in 'Initialize()' */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    /* Activate first (and only) texture unit */
-    glActiveTexture(GL_TEXTURE0);
+    /* Get texture uniform handle from fragment shader */
+    TextureUniform = glGetUniformLocation(ShaderProgram, "textureSampler");
+    if(TextureUniform == -1){
+        fprintf(stderr, "Could not bind uniform textureSampler");
+        exit(-1);
+    }
 
-    /* Bind current texture  */
-    glBindTexture(GL_TEXTURE_2D, TextureID);
 
     /* Get texture uniform handle from fragment shader */
-//    TextureUniform = glGetUniformLocation(ShaderProgram, "textureSampler");
-//    if(TextureUniform == -1){
-//        fprintf(stderr, "Could not bind uniform textureSampler");
-//        exit(-1);
-//    }
+    depth_uniform = glGetUniformLocation(ShaderProgram, "depth_texture");
+    if(depth_uniform == -1){
+        fprintf(stderr, "Could not bind uniform depth_texture");
+        exit(-1);
+    }
 
     /* Set location of uniform sampler variable */
     glUniform1i(TextureUniform, 0);
+    glUniform1i(depth_uniform, 1);
+
+    /* Activate first (and only) texture unit */
+    glActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    /* Bind current texture  */
+    glBindTexture(GL_TEXTURE_2D, TextureID);
+
+    /* Activate second texture unit */
+    glActiveTexture(GL_TEXTURE1);
+
+    /* Bind current texture  */
+    glBindTexture(GL_TEXTURE_2D, depth_texture);
 
     GLint size;
     glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
@@ -145,6 +221,24 @@ void Display() {
         exit(-1);
     }
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
+
+    GLint ShaddowID = glGetUniformLocation(ShaderProgram, "shadow_matrix");
+    if (ShaddowID == -1) {
+        fprintf(stderr, "Could not bind uniform ShaddowID\n");
+        exit(-1);
+    }
+
+    glUniformMatrix4fv(ShaddowID, 1, GL_FALSE, glm::value_ptr(scale_bias_matrix * light_projection_matrix * light_view_matrix) );
+
+    /* Associate program with uniform shader matrices */
+    /*
+    GLint VMatrixID = glGetUniformLocation(ShaderProgram, "ViewMatrix");
+    if (VMatrixID == -1) {
+        fprintf(stderr, "Could not bind uniform ViewMatrix\n");
+        exit(-1);
+    }
+    glUniformMatrix4fv(VMatrixID, 1, GL_FALSE, value_ptr(ViewMatrix));
+    */
 
     /* associate program with light */
     //light 1 (immobile, changable colors)
@@ -404,6 +498,52 @@ void CreateShaderProgram() {
     glUseProgram(ShaderProgram);
 }
 
+void CreateLightShader() {
+    /* Allocate shader object */
+    LightShader = glCreateProgram();
+
+    if (LightShader == 0) {
+        fprintf(stderr, "Error creating shader program\n");
+        exit(1);
+    }
+
+    /* Load shader code from file */
+    VertexShaderString = LoadShader("shaders/lightvertexshader.vs");
+    FragmentShaderString = LoadShader("shaders/lightfragmentshader.fs");
+
+    /* Separately add vertex and fragment shader to program */
+    AddShader(LightShader, VertexShaderString, GL_VERTEX_SHADER);
+    AddShader(LightShader, FragmentShaderString, GL_FRAGMENT_SHADER);
+
+    GLint Success = 0;
+    GLchar ErrorLog[1024];
+
+    /* Link shader code into executable shader program */
+    glLinkProgram(LightShader);
+
+    /* Check results of linking step */
+    glGetProgramiv(LightShader, GL_LINK_STATUS, &Success);
+
+    if (Success == 0) {
+        glGetProgramInfoLog(LightShader, sizeof(ErrorLog), NULL, ErrorLog);
+        fprintf(stderr, "Error linking shader program: '%s'\n", ErrorLog);
+        exit(1);
+    }
+
+    /* Check if shader program can be executed */
+    glValidateProgram(LightShader);
+    glGetProgramiv(LightShader, GL_VALIDATE_STATUS, &Success);
+
+    if (!Success) {
+        glGetProgramInfoLog(LightShader, sizeof(ErrorLog), NULL, ErrorLog);
+        fprintf(stderr, "Invalid shader program: '%s'\n", ErrorLog);
+        exit(1);
+    }
+
+    /* Put linked shader program into drawing pipeline */
+    glUseProgram(LightShader);
+}
+
 void SetupTexture() {
     /* Allocate texture container */
     Texture = (TextureData *) malloc(sizeof(TextureData *));
@@ -447,6 +587,23 @@ void SetupTexture() {
     /* Note: MIP mapping not visible due to fixed, i.e. static camera */
 }
 
+void SetupShadowMap(void)
+{
+    glGenTextures(1,&depth_texture);
+    glBindTexture(GL_TEXTURE_2D,depth_texture);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT32,texture_size, texture_size,0,GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &depth_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, depth_texture, 0);
+
+
+    glDrawBuffer(GL_NONE);
+}
 
 /******************************************************************
 *
@@ -522,6 +679,7 @@ void Initialize() {
     glDepthFunc(GL_LESS);
 
     /* Setup shaders and shader program */
+    CreateLightShader();
     CreateShaderProgram();
 
     GLint cPID = glGetUniformLocation(ShaderProgram, "cP");
@@ -539,6 +697,7 @@ void Initialize() {
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
 
     /* set up texture */
+    SetupShadowMap();
     SetupTexture();
 }
 

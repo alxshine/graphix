@@ -39,6 +39,7 @@ public:
     ~DrawObject();
 
     void draw(GLuint ShaderProgram);
+    void draw2(GLuint ShaderProgram);
 
     void unbindBuffers() const;
 

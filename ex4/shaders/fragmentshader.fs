@@ -3,6 +3,8 @@
 //texture
 uniform sampler2D textureSampler;
 
+uniform sampler2DShadow depth_texture;
+
 //colors
 uniform vec4 ambient;
 uniform vec4 diffuse;
@@ -22,6 +24,8 @@ in vec3 vLight2;
 in vec3 vNormal;
 in vec3 vView;
 in vec2 UVcoords;
+
+in vec4 shadow_coord;
 
 out vec4 FragColor;
 
@@ -57,6 +61,8 @@ void main()
 		cSpecular = vec4(1);
 	}
 
-	FragColor = showAmbient * kA * cAmbient + lI1 * (showDiffuse * iD1 * cDiffuse + showSpecular * iS1 * cSpecular)
+	float fshadow = textureProj(depth_texture, shadow_coord);
+
+	FragColor = showAmbient * kA * cAmbient + fshadow*lI1 * (showDiffuse * iD1 * cDiffuse + showSpecular * iS1 * cSpecular)
 		+ lI2 * (showDiffuse * iD2 * cDiffuse + showSpecular * iS2 * cSpecular);
 }
