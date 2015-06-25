@@ -88,7 +88,7 @@ void DrawObject::draw(GLuint ShaderProgram) {
 }
 
 void DrawObject::draw2(GLuint ShaderProgram) {
-    bindBuffers();
+    bindBuffers2();
 
     GLint size;
     glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
@@ -97,7 +97,7 @@ void DrawObject::draw2(GLuint ShaderProgram) {
 
     glDrawElements(GL_TRIANGLES, (GLsizei) (size / sizeof(GLushort)), GL_UNSIGNED_SHORT, 0);
 
-    unbindBuffers();
+    unbindBuffers2();
 }
 
 void DrawObject::bindBuffers() const {
@@ -124,6 +124,18 @@ void DrawObject::unbindBuffers() const {
 
     if (uv_size > 0)
         glDisableVertexAttribArray(vUV);
+}
+
+void DrawObject::bindBuffers2() const {
+    glEnableVertexAttribArray(vPosition);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+}
+
+void DrawObject::unbindBuffers2() const {
+    glDisableVertexAttribArray(vPosition);
 }
 
 void DrawObject::bindMatrices(GLuint ShaderProgram) const {

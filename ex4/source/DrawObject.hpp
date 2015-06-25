@@ -44,6 +44,9 @@ public:
     void unbindBuffers() const;
 
     void bindVectors(GLuint ShaderProgram);
+
+    void bindBuffers2() const;
+    void unbindBuffers2() const;
 };
 
 #endif

@@ -150,11 +150,11 @@ void DrawShadowMap(void) {
     glPolygonOffset(2.0f, 4.0f);
 
     /* Draw objects */
-    ground->draw(ShaderProgram);
-    carousel->draw(ShaderProgram);
+    ground->draw2(LightShader);
+    carousel->draw2(LightShader);
     for (int i = 0; i < 4; i++)
-        cups[i]->draw(ShaderProgram);
-    light2->draw(ShaderProgram);
+        cups[i]->draw2(LightShader);
+    light2->draw2(LightShader);
 
     glDisable(GL_POLYGON_OFFSET_FILL);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -589,19 +589,21 @@ void SetupTexture() {
     /* Note: MIP mapping not visible due to fixed, i.e. static camera */
 }
 
-void SetupShadowMap(void) {
-    glGenTextures(1, &depth_texture);
-    glBindTexture(GL_TEXTURE_2D, depth_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, texture_size, texture_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-                 NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+void SetupShadowMap(void)
+{
+    glGenTextures(1,&depth_texture);
+    glBindTexture(GL_TEXTURE_2D,depth_texture);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT32,texture_size, texture_size,0,GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenFramebuffers(1, &depth_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, depth_texture, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture, 0);
 
 
     glDrawBuffer(GL_NONE);
