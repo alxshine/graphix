@@ -24,6 +24,7 @@ out vec3 vView;
 out vec2 UVcoords;
 
 out vec4 shadow_coord;
+out float z;
 
 void main()
 {
@@ -48,4 +49,6 @@ void main()
 	vView = normalize(cP - p);
 
 	UVcoords = UV;
+
+	z = vec3(ProjectionViewMatrix*ModelMatrix*vec4(Position,1)).z;
 }

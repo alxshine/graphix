@@ -19,6 +19,8 @@ uniform float showSpecular;
 uniform vec4 lI1;
 uniform vec4 lI2;
 
+uniform vec4 fogColor;
+
 in vec3 vLight1;
 in vec3 vLight2;
 in vec3 vNormal;
@@ -26,6 +28,7 @@ in vec3 vView;
 in vec2 UVcoords;
 
 in vec4 shadow_coord;
+in float z;
 
 out vec4 FragColor;
 
@@ -36,6 +39,10 @@ void main()
 	float kD = 0.5;
 	float kS = 0.2;
 	float m = 8;
+
+	//fog coefficients
+	float density = 0.04;
+	float e = 2.718;
 
 	//normalize all vectors
 	vec3 l1 = normalize(vLight1);
@@ -63,6 +70,8 @@ void main()
 
 	float fshadow = textureProj(depth_texture, shadow_coord);
 
-	FragColor = showAmbient * kA * cAmbient + fshadow*lI1 * (showDiffuse * iD1 * cDiffuse + showSpecular * iS1 * cSpecular)
+	vec4 color = showAmbient * kA * cAmbient + fshadow*lI1 * (showDiffuse * iD1 * cDiffuse + showSpecular * iS1 * cSpecular)
 		+ lI2 * (showDiffuse * iD2 * cDiffuse + showSpecular * iS2 * cSpecular);
+	float fZ = pow(e, -density*z);
+	FragColor = fZ * color + (1-fZ) * fogColor;
 }

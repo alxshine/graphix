@@ -93,12 +93,14 @@ float cameraDispositionZ = 20.f;
 float cameraDispositionY = 5.f;
 
 vec3 lightPosition1 = vec3(5, 2, 5);
-vec4 lightIntensity1 = vec4(0.5, 0.5, 0.5, 1);
+vec4 lightIntensity1 = vec4(1, 1, 1, 1);
 
 vec4 initialLightPosition2 = vec4(2, 2, 5, 1);
 mat4 lightMatrix2 = mat4(1);
-vec4 lightIntensity2 = vec4(0.5, 0.5, 0.5, 1);
+vec4 lightIntensity2 = vec4(0, 0, 0, 1);
 DrawObject *light2 = 0;
+
+vec4 fogColor = vec4(0.5, 0.6, 0.6, 1);
 
 //ambient diffuse and specular terms for turning them on and off;
 float ambient = 1, diffuse = 1, specular = 1;
@@ -124,9 +126,8 @@ GLsizei texture_size = 1024;
 GLuint depth_fbo;
 
 
-void DrawShadowMap(void)
-{
-    light_view_matrix = glm::lookAt(lightPosition1, vec3(0.0f), vec3(0,1,0));
+void DrawShadowMap(void) {
+    light_view_matrix = glm::lookAt(lightPosition1, vec3(0.0f), vec3(0, 1, 0));
     light_projection_matrix = glm::frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 50.0f);
     glUseProgram(LightShader);
 
@@ -137,7 +138,7 @@ void DrawShadowMap(void)
     }
 
     glUniformMatrix4fv(VP_matrix, 1, GL_FALSE, glm::value_ptr(
-            light_projection_matrix * light_view_matrix) );
+            light_projection_matrix * light_view_matrix));
 
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
     glViewport(0, 0, texture_size, texture_size);
@@ -182,7 +183,7 @@ void Display() {
 
     /* Get texture uniform handle from fragment shader */
     TextureUniform = glGetUniformLocation(ShaderProgram, "textureSampler");
-    if(TextureUniform == -1){
+    if (TextureUniform == -1) {
         fprintf(stderr, "Could not bind uniform textureSampler");
         exit(-1);
     }
@@ -190,7 +191,7 @@ void Display() {
 
     /* Get texture uniform handle from fragment shader */
     depth_uniform = glGetUniformLocation(ShaderProgram, "depth_texture");
-    if(depth_uniform == -1){
+    if (depth_uniform == -1) {
         fprintf(stderr, "Could not bind uniform depth_texture");
         exit(-1);
     }
@@ -228,7 +229,8 @@ void Display() {
         exit(-1);
     }
 
-    glUniformMatrix4fv(ShaddowID, 1, GL_FALSE, glm::value_ptr(scale_bias_matrix * light_projection_matrix * light_view_matrix) );
+    glUniformMatrix4fv(ShaddowID, 1, GL_FALSE,
+                       glm::value_ptr(scale_bias_matrix * light_projection_matrix * light_view_matrix));
 
     /* Associate program with uniform shader matrices */
     /*
@@ -587,11 +589,11 @@ void SetupTexture() {
     /* Note: MIP mapping not visible due to fixed, i.e. static camera */
 }
 
-void SetupShadowMap(void)
-{
-    glGenTextures(1,&depth_texture);
-    glBindTexture(GL_TEXTURE_2D,depth_texture);
-    glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT32,texture_size, texture_size,0,GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+void SetupShadowMap(void) {
+    glGenTextures(1, &depth_texture);
+    glBindTexture(GL_TEXTURE_2D, depth_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, texture_size, texture_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
+                 NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
@@ -672,7 +674,7 @@ void Initialize() {
     light2->InitialTransform = translate(mat4(1), vec3(initialLightPosition2));
 
     /* Set background (clear) color to Black */
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(fogColor.r, fogColor.g, fogColor.b, fogColor.a);
 
     /* Enable depth testing */
     glEnable(GL_DEPTH_TEST);
@@ -695,6 +697,13 @@ void Initialize() {
         exit(-1);
     }
     glUniformMatrix4fv(PVMatrixID, 1, GL_FALSE, value_ptr(ProjectionMatrix * ViewMatrix));
+
+    GLint fogColorID = glGetUniformLocation(ShaderProgram, "fogColor");
+    if (fogColorID == -1) {
+        fprintf(stderr, "Could not locate uniform FogColor\n");
+        exit(-1);
+    }
+    glUniform4fv(fogColorID, 1, value_ptr(fogColor));
 
     /* set up texture */
     SetupShadowMap();
