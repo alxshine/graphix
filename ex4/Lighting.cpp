@@ -52,6 +52,7 @@ using namespace glm;
 
 DrawObject *carousel = 0, *ground = 0, *back = 0;
 DrawObject *cups[4] = {0, 0, 0, 0};
+DrawObject *billboard = 0;
 
 /* Strings for loading and storing shader code */
 static const char *VertexShaderString;
@@ -631,7 +632,7 @@ void Initialize() {
     /* Set viewing transform */
     ViewMatrix = lookAt(vec3(0, cameraDispositionY, cameraDispositionZ),    /* Eye vector */
                         vec3(0, 0, 0),     /* Viewing center */
-                        vec3(0, 1, -1));  /* Up vector */
+                        vec3(0, 1, 0));  /* Up vector */
 
     int success;
 
@@ -671,6 +672,7 @@ void Initialize() {
         printf("Could not load file. Exiting\n");
         exit(-1);
     }
+
     vec4 lightMaterial[3] = {vec4(1, 1, 1, 1), vec4(1, 1, 1, 1), vec4(1, 1, 1, 1)};
     light2 = new DrawObject(&data, lightMaterial);
     light2->InitialTransform = translate(mat4(1), vec3(initialLightPosition2));
